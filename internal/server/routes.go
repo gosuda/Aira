@@ -1,8 +1,6 @@
 package server
 
 import (
-	"net/http"
-
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
@@ -10,6 +8,7 @@ import (
 	v1 "github.com/gosuda/aira/internal/api/v1"
 	"github.com/gosuda/aira/internal/api/ws"
 	"github.com/gosuda/aira/internal/auth"
+	airaslack "github.com/gosuda/aira/internal/messenger/slack"
 	"github.com/gosuda/aira/internal/store/postgres"
 )
 
@@ -31,12 +30,7 @@ func registerWSRoutes(r chi.Router, hub *ws.Hub) {
 	r.Get("/agent/{sessionID}", hub.ServeAgent)
 }
 
-func registerSlackRoutes(r chi.Router) {
-	// Placeholder: Slack webhook endpoints.
-	r.Post("/events", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	})
-	r.Post("/interactions", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	})
+func registerSlackRoutes(r chi.Router, handler *airaslack.Handler) {
+	r.Post("/events", handler.HandleEvents)
+	r.Post("/interactions", handler.HandleInteractions)
 }

@@ -4,34 +4,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 	"github.com/rs/cors"
+	slacklib "github.com/slack-go/slack"
 
 	"github.com/gosuda/aira/internal/agent"
 	"github.com/gosuda/aira/internal/api/ws"
 	"github.com/gosuda/aira/internal/auth"
 	"github.com/gosuda/aira/internal/config"
+	"github.com/gosuda/aira/internal/messenger"
+	airaslack "github.com/gosuda/aira/internal/messenger/slack"
 	"github.com/gosuda/aira/internal/server/middleware"
 	"github.com/gosuda/aira/internal/store/postgres"
 	redisstore "github.com/gosuda/aira/internal/store/redis"
 )
 
+// Server is the HTTP server that wires all application routes and middleware.
 type Server struct {
-	router       chi.Router
-	httpServer   *http.Server
-	store        *postgres.Store
-	auth         *auth.Service
-	pubsub       *redisstore.PubSub
-	wsHub        *ws.Hub
-	orchestrator *agent.Orchestrator
-	cfg          *config.Config
+	router          chi.Router
+	httpServer      *http.Server
+	store           *postgres.Store
+	auth            *auth.Service
+	pubsub          *redisstore.PubSub
+	wsHub           *ws.Hub
+	orchestrator    *agent.Orchestrator
+	messengerRouter *messenger.Router // nil when Slack is not configured
+	cfg             *config.Config
 }
 
+// New creates a Server with all routes wired.
 func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator) *Server {
 	router := chi.NewRouter()
 
@@ -102,9 +110,19 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		registerWSRoutes(r, hub)
 	})
 
-	// Slack webhook routes (placeholder).
+	// Slack webhook routes: real handler if configured, 501 placeholder otherwise.
 	router.Route("/slack", func(r chi.Router) {
-		registerSlackRoutes(r)
+		slackHandler := s.buildSlackHandler(cfg, store, orchestrator)
+		if slackHandler != nil {
+			registerSlackRoutes(r, slackHandler)
+		} else {
+			r.Post("/events", func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotImplemented)
+			})
+			r.Post("/interactions", func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotImplemented)
+			})
+		}
 	})
 
 	// Health check (unauthenticated).
@@ -117,6 +135,43 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 	return s
 }
 
+// buildSlackHandler creates the Slack handler stack when Slack is configured.
+// Returns nil if Slack signing secret is not set.
+func (s *Server) buildSlackHandler(cfg *config.Config, store *postgres.Store, orchestrator *agent.Orchestrator) *airaslack.Handler {
+	if cfg.Slack.SigningSecret == "" {
+		return nil
+	}
+
+	// Build the Slack messenger from the bot token.
+	slackClient := slacklib.New(cfg.Slack.BotToken)
+	slackMessenger := airaslack.NewSlackMessenger(slackClient)
+
+	// Build the messenger router that bridges HITL questions to Slack threads.
+	msgRouter := messenger.NewRouter(
+		store.HITL(),
+		slackMessenger,
+		orchestrator.HandleHITLResponse,
+	)
+	s.messengerRouter = msgRouter
+
+	// Build the response adapter that maps Slack user IDs to internal users.
+	adapter := &slackResponseAdapter{
+		router:   msgRouter,
+		userRepo: store.Users(),
+	}
+
+	// Single-tenant mode: use a fixed tenant ID.
+	// In production, this would be resolved per-workspace via Slack team ID.
+	tenantID := uuid.Nil
+
+	handler := airaslack.NewHandler(cfg.Slack.SigningSecret, adapter, tenantID)
+
+	log.Println("server: Slack integration enabled")
+
+	return handler
+}
+
+// Start begins listening for HTTP requests.
 func (s *Server) Start(_ context.Context) error {
 	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server.Start: %w", err)
@@ -124,6 +179,7 @@ func (s *Server) Start(_ context.Context) error {
 	return nil
 }
 
+// Shutdown gracefully stops the HTTP server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		return fmt.Errorf("server.Shutdown: %w", err)
