@@ -76,7 +76,7 @@ Aira will execute, create the ADR, update the Kanban board, and ask any question
 - **ADR + Kanban Engine**: Built-in, versioned, searchable
 - **HITL Mapping Layer**: Automatically converts any `question` tool call into messenger threads
 - **State**: PostgreSQL + Redis
-- **Notifications**: Unified push (optional) + native in-messenger threads
+- **Notifications**: Native in-messenger push
 - **Security**: Full audit trail of every decision and question
 
 ---
