@@ -93,9 +93,9 @@ Done. The AI will handle the rest and notify you when it’s ready for review.
 
 ---
 
-## Tech Stack (Default)
+## Tech Stack
 
-- Go 1.23+ or TypeScript 5+
+- Go 1.26+
 - Docker + Docker Compose
 - PostgreSQL, Redis
 - Claude Code with Agent SDK
@@ -111,8 +111,6 @@ Done. The AI will handle the rest and notify you when it’s ready for review.
 - [ ] Team role-based permissions
 - [ ] On-prem enterprise edition
 - [ ] Mobile app (iOS/Android)
-
----
 
 ## License
 
