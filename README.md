@@ -1,4 +1,4 @@
-# Aira
+# Aira-ai
 
 **The open-source, agent-native engineering platform — the true AI-native evolution of Jira.**
 
