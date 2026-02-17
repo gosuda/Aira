@@ -31,14 +31,21 @@ docker-down:
 
 migrate-up:
 	@echo "Applying migrations to $${AIRA_DB_NAME:-aira_dev}..."
-	PGPASSWORD=$${AIRA_DB_PASSWORD:-aira} psql \
-		-h $${AIRA_DB_HOST:-localhost} \
-		-p $${AIRA_DB_PORT:-5432} \
-		-U $${AIRA_DB_USER:-aira} \
-		-d $${AIRA_DB_NAME:-aira_dev} \
-		-f migrations/001_initial.sql
+	@for f in migrations/*.sql; do \
+		echo "  -> $$f"; \
+		PGPASSWORD=$${AIRA_DB_PASSWORD:-aira} psql \
+			-h $${AIRA_DB_HOST:-localhost} \
+			-p $${AIRA_DB_PORT:-5432} \
+			-U $${AIRA_DB_USER:-aira} \
+			-d $${AIRA_DB_NAME:-aira_dev} \
+			-f "$$f" || exit 1; \
+	done
 
 migrate-down:
+	@if [ "$${AIRA_ENV}" != "dev" ] && [ "$${AIRA_ENV}" != "test" ]; then \
+		echo "ERROR: migrate-down requires AIRA_ENV=dev or AIRA_ENV=test (current: $${AIRA_ENV:-unset})"; \
+		exit 1; \
+	fi
 	@echo "Dropping all tables from $${AIRA_DB_NAME:-aira_dev}..."
 	PGPASSWORD=$${AIRA_DB_PASSWORD:-aira} psql \
 		-h $${AIRA_DB_HOST:-localhost} \
