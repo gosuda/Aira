@@ -1,0 +1,33 @@
+# Version control
+.git
+.gitignore
+
+# Go artifacts
+coverage.out
+*.exe
+
+# Node / frontend artifacts
+node_modules
+web/node_modules
+web/.svelte-kit
+web/build
+
+# Environment and secrets
+.env
+.env.*
+
+# Editor and OS artifacts
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# CI/CD
+.github
