@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
+	"github.com/gosuda/aira/internal/agent"
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
 	"github.com/gosuda/aira/internal/store/postgres"
@@ -49,7 +49,7 @@ type ListAgentSessionsOutput struct {
 	Body []*domain.AgentSession
 }
 
-func RegisterAgentRoutes(api huma.API, store *postgres.Store) {
+func RegisterAgentRoutes(api huma.API, store *postgres.Store, orchestrator *agent.Orchestrator) {
 	huma.Register(api, huma.Operation{
 		OperationID: "trigger-agent",
 		Method:      http.MethodPost,
@@ -62,30 +62,18 @@ func RegisterAgentRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
-		// Look up the task to get the project ID.
-		task, err := store.Tasks().GetByID(ctx, tenantID, input.Body.TaskID)
+		session, err := orchestrator.StartTask(ctx, tenantID, input.Body.TaskID, input.Body.AgentType)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
 				return nil, huma.Error404NotFound("task not found")
 			}
-			return nil, huma.Error500InternalServerError("failed to look up task", err)
-		}
-
-		now := time.Now()
-		session := &domain.AgentSession{
-			ID:        uuid.New(),
-			TenantID:  tenantID,
-			ProjectID: task.ProjectID,
-			TaskID:    &input.Body.TaskID,
-			AgentType: input.Body.AgentType,
-			Status:    domain.AgentStatusPending,
-			CreatedAt: now,
-		}
-		session.BranchName = session.GenerateBranchName()
-
-		err = store.AgentSessions().Create(ctx, session)
-		if err != nil {
-			return nil, huma.Error500InternalServerError("failed to create agent session", err)
+			if errors.Is(err, agent.ErrUnknownAgent) {
+				return nil, huma.Error400BadRequest("unknown agent type: " + input.Body.AgentType)
+			}
+			if errors.Is(err, agent.ErrInvalidSessionState) {
+				return nil, huma.Error400BadRequest("task is not in an eligible state for agent execution")
+			}
+			return nil, huma.Error500InternalServerError("failed to start agent session", err)
 		}
 
 		return &TriggerAgentOutput{Body: session}, nil
@@ -126,26 +114,21 @@ func RegisterAgentRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
-		session, err := store.AgentSessions().GetByID(ctx, tenantID, input.ID)
+		err := orchestrator.CancelSession(ctx, tenantID, input.ID)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
 				return nil, huma.Error404NotFound("agent session not found")
 			}
-			return nil, huma.Error500InternalServerError("failed to get agent session", err)
-		}
-
-		if session.Status == domain.AgentStatusCompleted ||
-			session.Status == domain.AgentStatusFailed ||
-			session.Status == domain.AgentStatusCancelled {
-			return nil, huma.Error400BadRequest("agent session is already in terminal state: " + string(session.Status))
-		}
-
-		err = store.AgentSessions().UpdateStatus(ctx, tenantID, input.ID, domain.AgentStatusCancelled)
-		if err != nil {
+			if errors.Is(err, agent.ErrInvalidSessionState) {
+				return nil, huma.Error400BadRequest("agent session is already in a terminal state")
+			}
 			return nil, huma.Error500InternalServerError("failed to cancel agent session", err)
 		}
 
-		session.Status = domain.AgentStatusCancelled
+		session, err := store.AgentSessions().GetByID(ctx, tenantID, input.ID)
+		if err != nil {
+			return nil, huma.Error500InternalServerError("failed to get cancelled session", err)
+		}
 
 		return &CancelAgentOutput{Body: session}, nil
 	})

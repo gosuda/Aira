@@ -12,6 +12,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 
+	"github.com/gosuda/aira/internal/agent"
 	"github.com/gosuda/aira/internal/api/ws"
 	"github.com/gosuda/aira/internal/auth"
 	"github.com/gosuda/aira/internal/config"
@@ -21,16 +22,17 @@ import (
 )
 
 type Server struct {
-	router     chi.Router
-	httpServer *http.Server
-	store      *postgres.Store
-	auth       *auth.Service
-	pubsub     *redisstore.PubSub
-	wsHub      *ws.Hub
-	cfg        *config.Config
+	router       chi.Router
+	httpServer   *http.Server
+	store        *postgres.Store
+	auth         *auth.Service
+	pubsub       *redisstore.PubSub
+	wsHub        *ws.Hub
+	orchestrator *agent.Orchestrator
+	cfg          *config.Config
 }
 
-func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service) *Server {
+func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator) *Server {
 	router := chi.NewRouter()
 
 	// Global middleware stack.
@@ -50,12 +52,13 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 	hub := ws.NewHub(pubsub)
 
 	s := &Server{
-		router: router,
-		store:  store,
-		auth:   authSvc,
-		pubsub: pubsub,
-		wsHub:  hub,
-		cfg:    cfg,
+		router:       router,
+		store:        store,
+		auth:         authSvc,
+		pubsub:       pubsub,
+		wsHub:        hub,
+		orchestrator: orchestrator,
+		cfg:          cfg,
 		httpServer: &http.Server{
 			Addr:         cfg.Server.Addr,
 			Handler:      router,
@@ -89,7 +92,7 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 				{URL: "/api/v1"},
 			}
 			api := humachi.New(r, apiConfig)
-			registerAPIRoutes(api, store)
+			registerAPIRoutes(api, store, orchestrator)
 		})
 	})
 

@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gosuda/aira/internal/agent"
+	"github.com/gosuda/aira/internal/agent/backends"
 	"github.com/gosuda/aira/internal/auth"
 	"github.com/gosuda/aira/internal/config"
 	"github.com/gosuda/aira/internal/server"
@@ -53,8 +55,39 @@ func run() error {
 	// Create auth service.
 	authSvc := auth.NewService(store.Users(), cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 
+	// Create Docker runtime for agent containers.
+	dockerRuntime, err := agent.NewDockerRuntime(
+		cfg.Docker.Host,
+		cfg.Docker.ImageDefault,
+		cfg.Docker.CPULimit,
+		cfg.Docker.MemLimit,
+	)
+	if err != nil {
+		return fmt.Errorf("docker runtime: %w", err)
+	}
+	defer dockerRuntime.Close()
+
+	// Create agent registry and register backends.
+	registry := agent.NewRegistry()
+	registry.Register("claude", backends.NewClaudeBackend)
+
+	// Create volume manager using Docker client.
+	volumes := agent.NewVolumeManager(dockerRuntime.Client())
+
+	// Create orchestrator.
+	orchestrator := agent.NewOrchestrator(
+		registry,
+		dockerRuntime,
+		volumes,
+		store.AgentSessions(),
+		store.Tasks(),
+		store.Projects(),
+		store.ADRs(),
+		pubsub,
+	)
+
 	// Create HTTP server with all routes wired.
-	srv := server.New(cfg, store, pubsub, authSvc)
+	srv := server.New(cfg, store, pubsub, authSvc, orchestrator)
 
 	// Graceful shutdown on SIGINT / SIGTERM.
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
