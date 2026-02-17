@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"math"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,11 +24,35 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("aira: %v", err)
+		slog.Error("startup failed", "error", err)
+		os.Exit(1)
 	}
 }
 
 func run() error {
+	// Initialize structured logging from environment.
+	logLevel := os.Getenv("AIRA_LOG_LEVEL")
+	var level slog.Level
+	switch strings.ToLower(logLevel) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	logFormat := os.Getenv("AIRA_LOG_FORMAT")
+	var handler slog.Handler
+	if logFormat == "text" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	}
+	slog.SetDefault(slog.New(handler))
+
 	ctx := context.Background()
 
 	// Load configuration from environment.
@@ -106,15 +131,15 @@ func run() error {
 
 	// Start server in background goroutine.
 	go func() {
-		log.Printf("aira: starting server on %s", cfg.Server.Addr)
+		slog.Info("starting server", "addr", cfg.Server.Addr)
 		if startErr := srv.Start(ctx); startErr != nil {
-			log.Printf("aira: server error: %v", startErr)
+			slog.Error("server error", "error", startErr)
 		}
 	}()
 
 	// Block until shutdown signal.
 	<-ctx.Done()
-	log.Println("aira: shutting down...")
+	slog.Info("shutting down")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
@@ -123,6 +148,6 @@ func run() error {
 		return shutdownErr
 	}
 
-	log.Println("aira: stopped")
+	slog.Info("stopped")
 	return nil
 }

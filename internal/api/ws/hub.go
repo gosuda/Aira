@@ -3,7 +3,7 @@ package ws
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/coder/websocket"
@@ -43,7 +43,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		log.Printf("ws.Hub.ServeBoard: accept: %v", err)
+		slog.Error("websocket accept", "error", err)
 		return
 	}
 	defer conn.CloseNow()
@@ -53,7 +53,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
-		log.Printf("ws.Hub.ServeBoard: subscribe: %v", err)
+		slog.Error("websocket subscribe", "error", err)
 		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
 		return
 	}
@@ -70,7 +70,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
-				log.Printf("ws.Hub.ServeBoard: write: %v", writeErr)
+				slog.Debug("websocket write", "error", writeErr)
 				return
 			}
 		}
@@ -90,7 +90,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		log.Printf("ws.Hub.ServeAgent: accept: %v", err)
+		slog.Error("websocket accept", "error", err)
 		return
 	}
 	defer conn.CloseNow()
@@ -100,7 +100,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
-		log.Printf("ws.Hub.ServeAgent: subscribe: %v", err)
+		slog.Error("websocket subscribe", "error", err)
 		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
 		return
 	}
@@ -117,7 +117,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
-				log.Printf("ws.Hub.ServeAgent: write: %v", writeErr)
+				slog.Debug("websocket write", "error", writeErr)
 				return
 			}
 		}

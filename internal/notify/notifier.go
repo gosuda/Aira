@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -51,7 +51,7 @@ func (n *Notifier) Notify(ctx context.Context, userID uuid.UUID, message string)
 	}
 
 	if len(links) == 0 {
-		log.Printf("notify: no messenger links for user %s, message: %s", userID, message)
+		slog.Warn("no messenger links for user", "user_id", userID, "message", message)
 		return nil
 	}
 

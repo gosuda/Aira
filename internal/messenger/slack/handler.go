@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -89,7 +89,7 @@ func (h *Handler) handleURLVerification(w http.ResponseWriter, challenge string)
 
 	resp := map[string]string{"challenge": challenge}
 	if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
-		log.Printf("slack.Handler.handleURLVerification: encode response: %v", encodeErr)
+		slog.Error("encode url verification response", "error", encodeErr)
 	}
 }
 
@@ -108,7 +108,7 @@ func (h *Handler) handleEventCallback(ctx context.Context, w http.ResponseWriter
 	}
 
 	if respondErr := h.responder.HandleSlackResponse(ctx, h.tenantID, evt.ThreadTS, evt.Text, evt.User); respondErr != nil {
-		log.Printf("slack.Handler.handleEventCallback: dispatch response: %v", respondErr)
+		slog.Error("dispatch event callback response", "error", respondErr)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -166,7 +166,7 @@ func (h *Handler) HandleInteractions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if respondErr := h.responder.HandleSlackResponse(r.Context(), h.tenantID, threadTS, actionValue, userID); respondErr != nil {
-		log.Printf("slack.Handler.HandleInteractions: dispatch response: %v", respondErr)
+		slog.Error("dispatch interaction response", "error", respondErr)
 	}
 
 	w.WriteHeader(http.StatusOK)
