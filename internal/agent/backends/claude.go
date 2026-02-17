@@ -60,8 +60,9 @@ func (b *ClaudeBackend) StartSession(ctx context.Context, opts agent.SessionOpti
 	containerID, err := b.runtime.CreateContainer(ctx, agent.ContainerOptions{
 		SessionID:   sessionID,
 		Image:       claudeImage,
-		VolumeName:  opts.ProjectDir, // volume name passed via ProjectDir
+		VolumeName:  opts.ProjectDir,
 		ProjectDir:  "/repo",
+		WorkDir:     opts.WorkDir,
 		BranchName:  opts.BranchName,
 		Environment: opts.Environment,
 		Cmd:         cmd,

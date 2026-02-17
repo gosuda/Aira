@@ -148,11 +148,14 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	})
 
 	// 6. Start session via backend.
+	// WorkDir points to the isolated worktree so multiple agents can run concurrently.
 	prompt := buildPrompt(task)
+	worktreeDir := "/repo/.worktrees/" + session.BranchName
 
 	_, err = backend.StartSession(ctx, SessionOptions{
 		SessionID:   session.ID,
 		ProjectDir:  volumeName,
+		WorkDir:     worktreeDir,
 		BranchName:  session.BranchName,
 		Prompt:      prompt,
 		Environment: nil,
@@ -252,6 +255,7 @@ func (o *Orchestrator) CancelSession(ctx context.Context, tenantID, sessionID uu
 	}
 
 	o.cleanupBackend(sessionID)
+	o.cleanupWorktree(ctx, sessionID, tenantID)
 
 	return nil
 }
@@ -271,6 +275,7 @@ func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID 
 	}
 
 	o.cleanupBackend(sessionID)
+	o.cleanupWorktree(ctx, sessionID, tenantID)
 
 	// Publish completion event.
 	evt := map[string]string{
@@ -403,6 +408,17 @@ func (o *Orchestrator) cleanupBackend(sessionID uuid.UUID) {
 		defer cancel()
 		_ = backend.Dispose(ctx)
 	}
+}
+
+// cleanupWorktree removes the git worktree for a completed/cancelled session.
+func (o *Orchestrator) cleanupWorktree(ctx context.Context, sessionID, tenantID uuid.UUID) {
+	session, err := o.sessions.GetByID(ctx, tenantID, sessionID)
+	if err != nil || session.BranchName == "" {
+		return
+	}
+
+	volumeName := "aira-repo-" + session.ProjectID.String()
+	_ = o.volumes.RemoveWorktree(ctx, volumeName, session.BranchName)
 }
 
 func buildPrompt(task *domain.Task) string {

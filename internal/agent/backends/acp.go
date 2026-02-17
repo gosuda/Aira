@@ -71,6 +71,7 @@ func (b *ACPBackend) StartSession(ctx context.Context, opts agent.SessionOptions
 		Image:       acpImage,
 		VolumeName:  opts.ProjectDir,
 		ProjectDir:  "/repo",
+		WorkDir:     opts.WorkDir,
 		BranchName:  opts.BranchName,
 		Environment: opts.Environment,
 		Cmd:         cmd,

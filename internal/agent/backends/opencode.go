@@ -62,6 +62,7 @@ func (b *OpenCodeBackend) StartSession(ctx context.Context, opts agent.SessionOp
 		Image:       opencodeImage,
 		VolumeName:  opts.ProjectDir,
 		ProjectDir:  "/repo",
+		WorkDir:     opts.WorkDir,
 		BranchName:  opts.BranchName,
 		Environment: opts.Environment,
 		Cmd:         cmd,

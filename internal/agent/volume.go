@@ -73,14 +73,33 @@ func (vm *VolumeManager) FetchRepo(ctx context.Context, volumeName string) error
 	return nil
 }
 
-// CreateBranch creates an isolated branch from the default branch.
+// CreateBranch creates an isolated git worktree for the session branch.
+// Using git worktree (instead of git checkout) is critical for concurrency safety:
+// multiple agents can work on the same repo volume simultaneously without corrupting
+// the shared working tree. Each worktree gets its own directory under /repo/.worktrees/.
 func (vm *VolumeManager) CreateBranch(ctx context.Context, volumeName, branchName, baseBranch string) error {
-	exitCode, err := vm.runGitContainer(ctx, volumeName, []string{"checkout", "-b", branchName, baseBranch})
+	worktreePath := volumeMountDir + "/.worktrees/" + branchName
+	exitCode, err := vm.runGitContainer(ctx, volumeName, []string{
+		"worktree", "add", "-b", branchName, worktreePath, baseBranch,
+	})
 	if err != nil {
 		return fmt.Errorf("agent.VolumeManager.CreateBranch: %w", err)
 	}
 	if exitCode != 0 {
-		return fmt.Errorf("agent.VolumeManager.CreateBranch: git checkout -b exited with code %d", exitCode)
+		return fmt.Errorf("agent.VolumeManager.CreateBranch: git worktree add exited with code %d", exitCode)
+	}
+	return nil
+}
+
+// RemoveWorktree cleans up a git worktree after a session completes.
+func (vm *VolumeManager) RemoveWorktree(ctx context.Context, volumeName, branchName string) error {
+	worktreePath := volumeMountDir + "/.worktrees/" + branchName
+	exitCode, err := vm.runGitContainer(ctx, volumeName, []string{"worktree", "remove", "--force", worktreePath})
+	if err != nil {
+		return fmt.Errorf("agent.VolumeManager.RemoveWorktree: %w", err)
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("agent.VolumeManager.RemoveWorktree: git worktree remove exited with code %d", exitCode)
 	}
 	return nil
 }

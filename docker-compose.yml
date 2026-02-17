@@ -1,13 +1,12 @@
 services:
   postgres:
     image: postgres:17
-    container_name: aira-postgres
     environment:
       POSTGRES_USER: aira
       POSTGRES_PASSWORD: aira
       POSTGRES_DB: aira_dev
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,9 +17,8 @@ services:
 
   redis:
     image: redis:7
-    container_name: aira-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Multi-tenant foundation
 CREATE TABLE tenants (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -66,10 +68,14 @@ CREATE TABLE projects (
     UNIQUE (tenant_id, name)
 );
 
+-- Cross-tenant safety: composite FK ensures adrs.project_id belongs to same tenant.
+-- PostgreSQL requires a UNIQUE constraint on the referenced columns for composite FKs.
+ALTER TABLE projects ADD CONSTRAINT uq_projects_tenant_id UNIQUE (tenant_id, id);
+
 CREATE TABLE adrs (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
-    project_id  UUID NOT NULL REFERENCES projects(id),
+    project_id  UUID NOT NULL,
     sequence    INT NOT NULL,
     title       TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'draft',
@@ -82,13 +88,16 @@ CREATE TABLE adrs (
     agent_session_id UUID,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (project_id, sequence)
+    UNIQUE (project_id, sequence),
+    CONSTRAINT fk_adrs_project_tenant
+        FOREIGN KEY (tenant_id, project_id) REFERENCES projects(tenant_id, id)
 );
 
+-- Cross-tenant safety for tasks: project must belong to same tenant.
 CREATE TABLE tasks (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
-    project_id  UUID NOT NULL REFERENCES projects(id),
+    project_id  UUID NOT NULL,
     adr_id      UUID REFERENCES adrs(id),
     title       TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
@@ -97,7 +106,9 @@ CREATE TABLE tasks (
     assigned_to UUID REFERENCES users(id),
     agent_session_id UUID,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT fk_tasks_project_tenant
+        FOREIGN KEY (tenant_id, project_id) REFERENCES projects(tenant_id, id)
 );
 
 CREATE TABLE repo_volumes (
@@ -109,10 +120,11 @@ CREATE TABLE repo_volumes (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Cross-tenant safety for agent_sessions: project must belong to same tenant.
 CREATE TABLE agent_sessions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id),
-    project_id      UUID NOT NULL REFERENCES projects(id),
+    project_id      UUID NOT NULL,
     task_id         UUID REFERENCES tasks(id),
     agent_type      TEXT NOT NULL,
     status          TEXT NOT NULL DEFAULT 'pending',
@@ -122,7 +134,9 @@ CREATE TABLE agent_sessions (
     completed_at    TIMESTAMPTZ,
     error           TEXT,
     metadata        JSONB NOT NULL DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT fk_sessions_project_tenant
+        FOREIGN KEY (tenant_id, project_id) REFERENCES projects(tenant_id, id)
 );
 
 CREATE TABLE hitl_questions (
@@ -171,3 +185,5 @@ CREATE INDEX idx_tasks_adr ON tasks(adr_id);
 CREATE INDEX idx_agent_sessions_task ON agent_sessions(task_id);
 CREATE INDEX idx_hitl_pending ON hitl_questions(status, timeout_at) WHERE status = 'pending';
 CREATE INDEX idx_audit_tenant ON audit_log(tenant_id, created_at DESC);
+
+COMMIT;

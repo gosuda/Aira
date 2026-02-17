@@ -17,6 +17,7 @@ type ContainerOptions struct {
 	Image       string
 	VolumeName  string // persistent repo volume
 	ProjectDir  string // mount point inside container
+	WorkDir     string // working directory (defaults to ProjectDir if empty)
 	BranchName  string
 	Environment map[string]string
 	Cmd         []string // command to run
@@ -76,11 +77,16 @@ func (d *DockerRuntime) CreateContainer(ctx context.Context, opts ContainerOptio
 		return "", fmt.Errorf("agent.DockerRuntime.CreateContainer: %w", err)
 	}
 
+	workDir := opts.WorkDir
+	if workDir == "" {
+		workDir = opts.ProjectDir
+	}
+
 	cfg := &container.Config{
 		Image:      image,
 		Env:        env,
 		Cmd:        opts.Cmd,
-		WorkingDir: opts.ProjectDir,
+		WorkingDir: workDir,
 	}
 
 	hostCfg := &container.HostConfig{

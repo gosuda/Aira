@@ -44,7 +44,8 @@ type MessageHandler func(msg Message)
 // SessionOptions configures a new agent session.
 type SessionOptions struct {
 	SessionID   SessionID
-	ProjectDir  string            // path to repo inside container
+	ProjectDir  string            // Docker volume name for repo
+	WorkDir     string            // working directory inside container (worktree path)
 	BranchName  string            // isolated branch
 	Prompt      string            // initial task prompt
 	Environment map[string]string // extra env vars
