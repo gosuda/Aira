@@ -1,0 +1,81 @@
+package v1
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
+
+	"github.com/gosuda/aira/internal/domain"
+	"github.com/gosuda/aira/internal/server/middleware"
+	"github.com/gosuda/aira/internal/store/postgres"
+)
+
+type CreateTenantInput struct {
+	Body struct {
+		Name string `json:"name" minLength:"1" maxLength:"255" doc:"Tenant name"`
+		Slug string `json:"slug" minLength:"1" maxLength:"63" doc:"URL-safe slug"`
+	}
+}
+
+type CreateTenantOutput struct {
+	Body *domain.Tenant
+}
+
+type ListTenantsInput struct{}
+
+type ListTenantsOutput struct {
+	Body []*domain.Tenant
+}
+
+func RegisterTenantRoutes(api huma.API, store *postgres.Store) {
+	huma.Register(api, huma.Operation{
+		OperationID: "create-tenant",
+		Method:      http.MethodPost,
+		Path:        "/tenants",
+		Summary:     "Create a new tenant",
+		Tags:        []string{"Tenants"},
+	}, func(ctx context.Context, input *CreateTenantInput) (*CreateTenantOutput, error) {
+		role, ok := middleware.RoleFromContext(ctx)
+		if !ok || role != "admin" {
+			return nil, huma.Error403Forbidden("admin role required")
+		}
+
+		now := time.Now()
+		t := &domain.Tenant{
+			ID:        uuid.New(),
+			Name:      input.Body.Name,
+			Slug:      input.Body.Slug,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+
+		if err := store.Tenants().Create(ctx, t); err != nil {
+			return nil, huma.Error500InternalServerError("failed to create tenant", err)
+		}
+
+		return &CreateTenantOutput{Body: t}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "list-tenants",
+		Method:      http.MethodGet,
+		Path:        "/tenants",
+		Summary:     "List all tenants",
+		Tags:        []string{"Tenants"},
+	}, func(ctx context.Context, _ *ListTenantsInput) (*ListTenantsOutput, error) {
+		role, ok := middleware.RoleFromContext(ctx)
+		if !ok || role != "admin" {
+			return nil, huma.Error403Forbidden("admin role required")
+		}
+
+		tenants, err := store.Tenants().List(ctx)
+		if err != nil {
+			return nil, huma.Error500InternalServerError("failed to list tenants", err)
+		}
+
+		return &ListTenantsOutput{Body: tenants}, nil
+	})
+}

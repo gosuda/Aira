@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: aira-postgres
+    environment:
+      POSTGRES_USER: aira
+      POSTGRES_PASSWORD: aira
+      POSTGRES_DB: aira_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aira -d aira_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: aira-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
