@@ -72,7 +72,6 @@ Aira will execute, create the ADR, update the Kanban board, and ask any question
 
 ## Architecture
 
-- **Backend**: Go (recommended) or TypeScript
 - **Agent Orchestration**: Pluggable (Claude Agent SDK native first)
 - **ADR + Kanban Engine**: Built-in, versioned, searchable
 - **HITL Mapping Layer**: Automatically converts any `question` tool call into messenger threads
