@@ -112,7 +112,6 @@ Aira will execute, create the ADR, update the Kanban board, and ask any question
 - [ ] Advanced planning agents (multi-step reasoning)
 - [ ] Team role-based permissions
 - [ ] On-prem enterprise edition
-- [ ] Mobile app (iOS/Android)
 
 ## License
 
