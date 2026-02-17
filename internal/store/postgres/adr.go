@@ -72,7 +72,8 @@ func (r *ADRRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.
 		return nil, fmt.Errorf("adrRepo.GetByID: %w", err)
 	}
 
-	if err := unmarshalADRJSON(&adr, drivers, options, consequences); err != nil {
+	err = unmarshalADRJSON(&adr, drivers, options, consequences)
+	if err != nil {
 		return nil, fmt.Errorf("adrRepo.GetByID: %w", err)
 	}
 
@@ -97,19 +98,22 @@ func (r *ADRRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.UU
 		var adr domain.ADR
 		var drivers, options, consequences []byte
 
-		if err := rows.Scan(
+		err = rows.Scan(
 			&adr.ID, &adr.TenantID, &adr.ProjectID, &adr.Sequence, &adr.Title, &adr.Status,
 			&adr.Context, &adr.Decision, &drivers, &options, &consequences,
 			&adr.CreatedBy, &adr.AgentSessionID, &adr.CreatedAt, &adr.UpdatedAt,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, fmt.Errorf("adrRepo.ListByProject: scan: %w", err)
 		}
-		if err := unmarshalADRJSON(&adr, drivers, options, consequences); err != nil {
+		err = unmarshalADRJSON(&adr, drivers, options, consequences)
+		if err != nil {
 			return nil, fmt.Errorf("adrRepo.ListByProject: %w", err)
 		}
 		adrs = append(adrs, &adr)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("adrRepo.ListByProject: rows: %w", err)
 	}
 

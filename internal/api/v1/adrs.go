@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
@@ -40,23 +41,20 @@ type UpdateADRStatusOutput struct {
 	Body *domain.ADR
 }
 
-var validADRTransitions = map[domain.ADRStatus][]domain.ADRStatus{
-	domain.ADRStatusDraft:    {domain.ADRStatusProposed},
-	domain.ADRStatusProposed: {domain.ADRStatusAccepted, domain.ADRStatusRejected},
-	domain.ADRStatusAccepted: {domain.ADRStatusDeprecated},
+func adrTransitions() map[domain.ADRStatus][]domain.ADRStatus {
+	return map[domain.ADRStatus][]domain.ADRStatus{
+		domain.ADRStatusDraft:    {domain.ADRStatusProposed},
+		domain.ADRStatusProposed: {domain.ADRStatusAccepted, domain.ADRStatusRejected},
+		domain.ADRStatusAccepted: {domain.ADRStatusDeprecated},
+	}
 }
 
 func isValidADRTransition(from, to domain.ADRStatus) bool {
-	allowed, ok := validADRTransitions[from]
+	allowed, ok := adrTransitions()[from]
 	if !ok {
 		return false
 	}
-	for _, s := range allowed {
-		if s == to {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, to)
 }
 
 func RegisterADRRoutes(api huma.API, store *postgres.Store) {
@@ -128,7 +126,8 @@ func RegisterADRRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error400BadRequest("invalid status transition from " + string(existing.Status) + " to " + string(target))
 		}
 
-		if err := store.ADRs().UpdateStatus(ctx, tenantID, input.ID, target); err != nil {
+		err = store.ADRs().UpdateStatus(ctx, tenantID, input.ID, target)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to update ADR status", err)
 		}
 

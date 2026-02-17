@@ -198,7 +198,8 @@ func RegisterTaskRoutes(api huma.API, store *postgres.Store) {
 		}
 		existing.UpdatedAt = time.Now()
 
-		if err := store.Tasks().Update(ctx, existing); err != nil {
+		err = store.Tasks().Update(ctx, existing)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to update task", err)
 		}
 
@@ -230,7 +231,8 @@ func RegisterTaskRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error400BadRequest("invalid status transition from " + string(existing.Status) + " to " + string(target))
 		}
 
-		if err := store.Tasks().UpdateStatus(ctx, tenantID, input.ID, target); err != nil {
+		err = store.Tasks().UpdateStatus(ctx, tenantID, input.ID, target)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to update task status", err)
 		}
 

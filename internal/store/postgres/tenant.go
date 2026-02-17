@@ -55,7 +55,8 @@ func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tenant,
 		return nil, fmt.Errorf("tenantRepo.GetByID: %w", err)
 	}
 
-	if err := json.Unmarshal(settings, &t.Settings); err != nil {
+	err = json.Unmarshal(settings, &t.Settings)
+	if err != nil {
 		return nil, fmt.Errorf("tenantRepo.GetByID: unmarshal settings: %w", err)
 	}
 
@@ -78,7 +79,8 @@ func (r *TenantRepo) GetBySlug(ctx context.Context, slug string) (*domain.Tenant
 		return nil, fmt.Errorf("tenantRepo.GetBySlug: %w", err)
 	}
 
-	if err := json.Unmarshal(settings, &t.Settings); err != nil {
+	err = json.Unmarshal(settings, &t.Settings)
+	if err != nil {
 		return nil, fmt.Errorf("tenantRepo.GetBySlug: unmarshal settings: %w", err)
 	}
 
@@ -121,16 +123,19 @@ func (r *TenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 		var t domain.Tenant
 		var settings []byte
 
-		if err := rows.Scan(&t.ID, &t.Name, &t.Slug, &settings, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		err = rows.Scan(&t.ID, &t.Name, &t.Slug, &settings, &t.CreatedAt, &t.UpdatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("tenantRepo.List: scan: %w", err)
 		}
-		if err := json.Unmarshal(settings, &t.Settings); err != nil {
+		err = json.Unmarshal(settings, &t.Settings)
+		if err != nil {
 			return nil, fmt.Errorf("tenantRepo.List: unmarshal settings: %w", err)
 		}
 
 		tenants = append(tenants, &t)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("tenantRepo.List: rows: %w", err)
 	}
 

@@ -34,7 +34,8 @@ func New(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 		return nil, fmt.Errorf("postgres.New: connect: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
+	err = pool.Ping(ctx)
+	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("postgres.New: ping: %w", err)
 	}

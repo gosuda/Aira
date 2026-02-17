@@ -168,7 +168,8 @@ func RegisterProjectRoutes(api huma.API, store *postgres.Store) {
 			existing.Settings = input.Body.Settings
 		}
 
-		if err := store.Projects().Update(ctx, existing); err != nil {
+		err = store.Projects().Update(ctx, existing)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to update project", err)
 		}
 

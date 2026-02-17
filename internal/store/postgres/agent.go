@@ -62,7 +62,8 @@ func (r *AgentSessionRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) 
 		return nil, fmt.Errorf("agentSessionRepo.GetByID: %w", err)
 	}
 
-	if err := json.Unmarshal(metadata, &s.Metadata); err != nil {
+	err = json.Unmarshal(metadata, &s.Metadata)
+	if err != nil {
 		return nil, fmt.Errorf("agentSessionRepo.GetByID: unmarshal metadata: %w", err)
 	}
 

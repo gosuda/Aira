@@ -119,7 +119,8 @@ func (r *UserRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.User
 		var u domain.User
 		var email, passwordHash, avatarURL *string
 
-		if err := rows.Scan(&u.ID, &u.TenantID, &email, &passwordHash, &u.Name, &u.Role, &avatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		err = rows.Scan(&u.ID, &u.TenantID, &email, &passwordHash, &u.Name, &u.Role, &avatarURL, &u.CreatedAt, &u.UpdatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("userRepo.List: scan: %w", err)
 		}
 
@@ -128,7 +129,8 @@ func (r *UserRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.User
 		u.AvatarURL = derefStr(avatarURL)
 		users = append(users, &u)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("userRepo.List: rows: %w", err)
 	}
 
@@ -232,12 +234,14 @@ func (r *UserRepo) ListMessengerLinks(ctx context.Context, userID uuid.UUID) ([]
 	var links []*domain.UserMessengerLink
 	for rows.Next() {
 		var link domain.UserMessengerLink
-		if err := rows.Scan(&link.ID, &link.UserID, &link.TenantID, &link.Platform, &link.ExternalID, &link.CreatedAt); err != nil {
+		err = rows.Scan(&link.ID, &link.UserID, &link.TenantID, &link.Platform, &link.ExternalID, &link.CreatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("userRepo.ListMessengerLinks: scan: %w", err)
 		}
 		links = append(links, &link)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("userRepo.ListMessengerLinks: rows: %w", err)
 	}
 
@@ -297,7 +301,8 @@ func (r *UserRepo) GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, pr
 		return nil, fmt.Errorf("userRepo.GetAPIKeyByPrefix: %w", err)
 	}
 
-	if err := json.Unmarshal(scopes, &key.Scopes); err != nil {
+	err = json.Unmarshal(scopes, &key.Scopes)
+	if err != nil {
 		return nil, fmt.Errorf("userRepo.GetAPIKeyByPrefix: unmarshal scopes: %w", err)
 	}
 
@@ -320,16 +325,19 @@ func (r *UserRepo) ListAPIKeys(ctx context.Context, tenantID, userID uuid.UUID) 
 		var key domain.APIKey
 		var scopes []byte
 
-		if err := rows.Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
-			&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt); err != nil {
+		err = rows.Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
+			&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("userRepo.ListAPIKeys: scan: %w", err)
 		}
-		if err := json.Unmarshal(scopes, &key.Scopes); err != nil {
+		err = json.Unmarshal(scopes, &key.Scopes)
+		if err != nil {
 			return nil, fmt.Errorf("userRepo.ListAPIKeys: unmarshal scopes: %w", err)
 		}
 		keys = append(keys, &key)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("userRepo.ListAPIKeys: rows: %w", err)
 	}
 

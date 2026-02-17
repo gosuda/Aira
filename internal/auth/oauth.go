@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
@@ -87,7 +88,12 @@ func (p *OAuthProvider) ExchangeCode(ctx context.Context, code string) (provider
 
 	client := p.oauthConfig.Client(ctx, token)
 
-	resp, err := client.Get(p.UserInfoURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.UserInfoURL, http.NoBody)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: creating request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: fetching user info: %w", err)
 	}
@@ -121,7 +127,8 @@ type googleUserInfo struct {
 
 func parseGoogleUserInfo(data []byte) (providerID, email, name, avatarURL string, err error) {
 	var info googleUserInfo
-	if err := json.Unmarshal(data, &info); err != nil {
+	err = json.Unmarshal(data, &info)
+	if err != nil {
 		return "", "", "", "", fmt.Errorf("auth.parseGoogleUserInfo: %w", err)
 	}
 
@@ -138,7 +145,8 @@ type gitHubUserInfo struct {
 
 func parseGitHubUserInfo(data []byte) (providerID, email, name, avatarURL string, err error) {
 	var info gitHubUserInfo
-	if err := json.Unmarshal(data, &info); err != nil {
+	err = json.Unmarshal(data, &info)
+	if err != nil {
 		return "", "", "", "", fmt.Errorf("auth.parseGitHubUserInfo: %w", err)
 	}
 
@@ -147,5 +155,5 @@ func parseGitHubUserInfo(data []byte) (providerID, email, name, avatarURL string
 		displayName = info.Login
 	}
 
-	return fmt.Sprintf("%d", info.ID), info.Email, displayName, info.AvatarURL, nil
+	return strconv.Itoa(info.ID), info.Email, displayName, info.AvatarURL, nil
 }

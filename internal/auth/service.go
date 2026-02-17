@@ -78,7 +78,8 @@ func (s *Service) Register(ctx context.Context, tenantID uuid.UUID, email, passw
 		UpdatedAt:    now,
 	}
 
-	if err := s.userRepo.Create(ctx, user); err != nil {
+	err = s.userRepo.Create(ctx, user)
+	if err != nil {
 		return nil, fmt.Errorf("auth.Register: %w", err)
 	}
 
@@ -155,7 +156,7 @@ func (s *Service) GetUser(ctx context.Context, tenantID, userID uuid.UUID) (*dom
 }
 
 // hashPassword generates an argon2id hash with a random salt.
-// Format: hex(salt) + "$" + hex(hash)
+// Format: hex(salt) + "$" + hex(hash).
 func hashPassword(password string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {

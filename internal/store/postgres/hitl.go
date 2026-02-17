@@ -62,7 +62,8 @@ func (r *HITLRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain
 		return nil, fmt.Errorf("hitlRepo.GetByID: %w", err)
 	}
 
-	if err := json.Unmarshal(options, &q.Options); err != nil {
+	err = json.Unmarshal(options, &q.Options)
+	if err != nil {
 		return nil, fmt.Errorf("hitlRepo.GetByID: unmarshal options: %w", err)
 	}
 
@@ -91,7 +92,8 @@ func (r *HITLRepo) GetByThreadID(ctx context.Context, tenantID uuid.UUID, platfo
 		return nil, fmt.Errorf("hitlRepo.GetByThreadID: %w", err)
 	}
 
-	if err := json.Unmarshal(options, &q.Options); err != nil {
+	err = json.Unmarshal(options, &q.Options)
+	if err != nil {
 		return nil, fmt.Errorf("hitlRepo.GetByThreadID: unmarshal options: %w", err)
 	}
 

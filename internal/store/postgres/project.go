@@ -55,7 +55,8 @@ func (r *ProjectRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*dom
 		return nil, fmt.Errorf("projectRepo.GetByID: %w", err)
 	}
 
-	if err := json.Unmarshal(settings, &p.Settings); err != nil {
+	err = json.Unmarshal(settings, &p.Settings)
+	if err != nil {
 		return nil, fmt.Errorf("projectRepo.GetByID: unmarshal settings: %w", err)
 	}
 
@@ -99,15 +100,18 @@ func (r *ProjectRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.P
 		var p domain.Project
 		var settings []byte
 
-		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &settings, &p.CreatedAt); err != nil {
+		err = rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &settings, &p.CreatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("projectRepo.List: scan: %w", err)
 		}
-		if err := json.Unmarshal(settings, &p.Settings); err != nil {
+		err = json.Unmarshal(settings, &p.Settings)
+		if err != nil {
 			return nil, fmt.Errorf("projectRepo.List: unmarshal settings: %w", err)
 		}
 		projects = append(projects, &p)
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("projectRepo.List: rows: %w", err)
 	}
 

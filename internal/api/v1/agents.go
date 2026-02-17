@@ -83,7 +83,8 @@ func RegisterAgentRoutes(api huma.API, store *postgres.Store) {
 		}
 		session.BranchName = session.GenerateBranchName()
 
-		if err := store.AgentSessions().Create(ctx, session); err != nil {
+		err = store.AgentSessions().Create(ctx, session)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to create agent session", err)
 		}
 
@@ -139,7 +140,8 @@ func RegisterAgentRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error400BadRequest("agent session is already in terminal state: " + string(session.Status))
 		}
 
-		if err := store.AgentSessions().UpdateStatus(ctx, tenantID, input.ID, domain.AgentStatusCancelled); err != nil {
+		err = store.AgentSessions().UpdateStatus(ctx, tenantID, input.ID, domain.AgentStatusCancelled)
+		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to cancel agent session", err)
 		}
 

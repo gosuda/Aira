@@ -12,6 +12,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 
+	"github.com/gosuda/aira/internal/api/ws"
 	"github.com/gosuda/aira/internal/auth"
 	"github.com/gosuda/aira/internal/config"
 	"github.com/gosuda/aira/internal/server/middleware"
@@ -25,6 +26,7 @@ type Server struct {
 	store      *postgres.Store
 	auth       *auth.Service
 	pubsub     *redisstore.PubSub
+	wsHub      *ws.Hub
 	cfg        *config.Config
 }
 
@@ -45,11 +47,14 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		MaxAge:           300,
 	}).Handler)
 
+	hub := ws.NewHub(pubsub)
+
 	s := &Server{
 		router: router,
 		store:  store,
 		auth:   authSvc,
 		pubsub: pubsub,
+		wsHub:  hub,
 		cfg:    cfg,
 		httpServer: &http.Server{
 			Addr:         cfg.Server.Addr,
@@ -88,10 +93,10 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		})
 	})
 
-	// WebSocket routes (placeholder).
+	// WebSocket routes.
 	router.Route("/ws", func(r chi.Router) {
 		r.Use(middleware.Auth(cfg.JWT.Secret, store.Users()))
-		registerWSRoutes(r)
+		registerWSRoutes(r, hub)
 	})
 
 	// Slack webhook routes (placeholder).

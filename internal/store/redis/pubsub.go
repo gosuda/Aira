@@ -41,11 +41,12 @@ func (ps *PubSub) Publish(ctx context.Context, channel string, payload []byte) e
 	return nil
 }
 
-func (ps *PubSub) Subscribe(ctx context.Context, channel string) (<-chan []byte, func(), error) {
+func (ps *PubSub) Subscribe(ctx context.Context, channel string) (messages <-chan []byte, cleanup func(), err error) {
 	sub := ps.client.Subscribe(ctx, channel)
 
 	// Wait for subscription confirmation.
-	if _, err := sub.Receive(ctx); err != nil {
+	_, err = sub.Receive(ctx)
+	if err != nil {
 		_ = sub.Close()
 		return nil, nil, fmt.Errorf("redis.PubSub.Subscribe: receive confirmation: %w", err)
 	}
@@ -72,7 +73,7 @@ func (ps *PubSub) Subscribe(ctx context.Context, channel string) (<-chan []byte,
 		}
 	}()
 
-	cleanup := func() {
+	cleanup = func() {
 		_ = sub.Close()
 	}
 
