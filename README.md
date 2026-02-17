@@ -1,73 +1,120 @@
-# Gosuda Template for Go
+# Aira
 
-Official AI agent coding guidelines and tooling templates for Go projects under [github.com/gosuda](https://github.com/gosuda).
+**The open-source, agent-native engineering platform — the true AI-native evolution of Jira.**
 
-## What's Included
+One command from Slack, Discord, Telegram or any chat app and AI agents read your codebase, edit code, add features, run tests and deploy to production.  
+Humans stay in the loop — faster, easier and more effective than ever with **live push notifications**.
 
-| File | Purpose |
-|------|---------|
-| [`AGENTS.md`](AGENTS.md) | AI agent coding guidelines (Go 1.25+) |
-| [`CLAUDE.md`](CLAUDE.md) | Symlink → `AGENTS.md` (Claude Code compatibility) |
-| [`.golangci.yml`](.golangci.yml) | golangci-lint v2 config — 41 linters across 4 tiers |
-| [`Makefile`](Makefile) | Build, lint, test, vuln scan targets |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | GitHub Actions: test → lint → security → build |
+---
 
-## Usage
+## Vision
 
-### New Project Setup
+The real bottleneck in development is not writing code — it is human communication and verification. Aira removes unnecessary friction while preserving true human-in-the-loop control. AI takes full responsibility for every detail of execution while humans handle only direction and exceptions, accelerated by live push notifications that make oversight instant and effortless. The result is 5–10× faster development velocity and the complete disappearance of burnout.
 
-1. **Copy config files** into your Go project root:
+Aira is the open-source release of what Spotify, Meta, and Tesla already run internally.
 
-   ```bash
-   # From a clone of this repo
-   cp .golangci.yml Makefile /path/to/your/project/
-   cp -r .github /path/to/your/project/
-   ```
+**Fork it. Customize it. Grow it with us.**  
+This is not merely a tool. It is the foundation of the next chapter in the developer ecosystem.
 
-2. **Copy agent guidelines** (for AI-assisted development):
+---
 
-   ```bash
-   cp AGENTS.md /path/to/your/project/
-   ln -s AGENTS.md /path/to/your/project/CLAUDE.md
-   ```
+## Features
 
-3. **Verify setup:**
+- **Zero-friction commands** — `@aira fix the auth bug` or `@aira add user profile page` from any chat
+- **Full agent-native execution** — code reading, editing, testing, CI, deployment
+- **True human-in-the-loop** — live push notifications with precise diffs, test results, and one-tap approve/rollback
+- **Multi-platform support** — Slack, Discord, Telegram, Linear, Jira, email, mobile (iOS/Android)
+- **Native agent framework support** — Claude Agent SDK, OpenCode, Codex, and more
+- **Enterprise-ready** — concurrency, state persistence, audit logs, rollback, secret management
+- **Language & stack agnostic** — works with any codebase (Go, TypeScript, Python, Rust, etc.)
+- **Self-hosted or cloud** — Docker, Kubernetes, or one-click deploy
 
-   ```bash
-   cd /path/to/your/project
-   make all
-   ```
+---
 
-### As a GitHub Template
+## How It Works
 
-This repo is designed as a **template repository**. Click **"Use this template"** on GitHub to create a new project with all configs pre-applied.
+1. You send a natural-language command in any supported chat
+2. Aira spins up specialized AI agents that:
+   - Clone / read the latest codebase
+   - Plan changes with architectural awareness
+   - Edit files via agent SDK
+   - Run tests locally and in CI
+   - Generate PR or deploy directly (configurable)
+3. You receive a **live push notification** with summary + key diffs + test status
+4. One tap: Approve → merge & deploy / Reject → rollback
+5. You only review the big picture. Everything else is handled.
 
-## Tooling Requirements
+---
 
-| Tool | Install |
-|------|---------|
-| Go 1.25+ | [go.dev/dl](https://go.dev/dl/) |
-| golangci-lint v2 | `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest` |
-| govulncheck | `go install golang.org/x/vuln/cmd/govulncheck@latest` |
-| goimports | `go install golang.org/x/tools/cmd/goimports@latest` |
+## Quick Start
 
-## CI Pipeline
-
-```
-test (race + coverage) ─┐
-lint (golangci-lint v2) ─┼─→ build
-security (govulncheck) ─┘
+```bash
+git clone https://github.com/yourorg/aira.git
+cd aira
+cp .env.example .env
+# Edit .env with your Claude / OpenAI / Anthropic keys + GitHub / Slack tokens
+docker compose up -d
 ```
 
-All three jobs run in parallel; build depends on all passing.
+Then invite `@aira` to your Slack/Discord/Telegram and type:
 
-## Linter Tiers
+```
+@aira implement dark mode toggle in the dashboard
+```
 
-- **Tier 1 — Correctness** (14): govet, errcheck, staticcheck, unused, gosec, errorlint, nilerr, copyloopvar, bodyclose, sqlclosecheck, rowserrcheck, durationcheck, makezero, noctx
-- **Tier 2 — Quality** (16): gocritic (all tags), revive, unconvert, unparam, wastedassign, misspell, whitespace, godot, goconst, dupword, usestdlibvars, testifylint, testableexamples, tparallel, usetesting
-- **Tier 3 — Concurrency** (3): gochecknoglobals, gochecknoinits, containedctx
-- **Tier 4 — Performance** (9): prealloc, intrange, modernize, fatcontext, perfsprint, reassign, spancheck, mirror, recvcheck
+Done. The AI will handle the rest and notify you when it’s ready for review.
+
+**Takes under 5 minutes to be productive.**
+
+---
+
+## Architecture
+
+- **Backend**: Go (high concurrency) or TypeScript (TypeScript-first teams) — your choice
+- **Agent Orchestration Layer**: Pluggable (Claude Agent SDK native, OpenCode, Codex)
+- **State & Persistence**: PostgreSQL + Redis
+- **Notification Engine**: Unified push (Firebase, APNs, Slack DM, Telegram, email)
+- **Security**: End-to-end encryption, least-privilege tools, full audit trail
+- **Extensibility**: Plugin system for custom tools, new chat platforms, and deployment targets
+
+---
+
+## Supported Integrations
+
+| Platform       | Status     | Notes                     |
+|----------------|------------|---------------------------|
+| Slack          | ✅ Native   | Commands + push           |
+| Discord        | ✅ Native   | Commands + push           |
+| Telegram       | ✅ Native   | Commands + push           |
+| Linear         | ✅         | Issue → command sync      |
+| Jira           | ✅         | Issue → command sync      |
+| GitHub         | ✅         | PRs, commits, deploy      |
+| GitLab / Bitbucket | ✅     | Full support              |
+| Mobile Push    | ✅         | iOS & Android             |
+
+---
+
+## Tech Stack (Default)
+
+- Go 1.23+ or TypeScript 5+
+- Docker + Docker Compose
+- PostgreSQL, Redis
+- Claude Code with Agent SDK
+- OpenCode / Codex Wrappers
+
+---
+
+## Roadmap
+
+- [ ] Web dashboard (visual agent monitoring)
+- [ ] Multi-repo & monorepo support
+- [ ] Advanced planning agents (multi-step reasoning)
+- [ ] Team role-based permissions
+- [ ] On-prem enterprise edition
+- [ ] Mobile app (iOS/Android)
+
+---
 
 ## License
 
-Internal tooling for [gosuda](https://github.com/gosuda) projects.
+Apache 2.0 © 2026 Metaphorics
