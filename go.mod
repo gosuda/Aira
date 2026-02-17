@@ -14,6 +14,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/rs/cors v1.11.1
+	github.com/slack-go/slack v0.17.3
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.48.0
 	golang.org/x/oauth2 v0.35.0
@@ -47,7 +48,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/slack-go/slack v0.17.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 // indirect
 	go.opentelemetry.io/otel v1.40.0 // indirect

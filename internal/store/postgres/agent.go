@@ -152,6 +152,37 @@ func (r *AgentSessionRepo) ListByProject(ctx context.Context, tenantID, projectI
 	return scanAgentSessions(rows, "agentSessionRepo.ListByProject")
 }
 
+func (r *AgentSessionRepo) ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.AgentSession, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
+		        started_at, completed_at, error, metadata, created_at
+		 FROM agent_sessions WHERE tenant_id = $1 AND project_id = $2
+		 ORDER BY created_at DESC
+		 LIMIT $3 OFFSET $4`,
+		tenantID, projectID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("agentSessionRepo.ListByProjectPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	return scanAgentSessions(rows, "agentSessionRepo.ListByProjectPaginated")
+}
+
+func (r *AgentSessionRepo) CountByProject(ctx context.Context, tenantID, projectID uuid.UUID) (int64, error) {
+	var count int64
+
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM agent_sessions WHERE tenant_id = $1 AND project_id = $2`,
+		tenantID, projectID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("agentSessionRepo.CountByProject: %w", err)
+	}
+
+	return count, nil
+}
+
 func scanAgentSessions(rows pgx.Rows, caller string) ([]*domain.AgentSession, error) {
 	var sessions []*domain.AgentSession
 	for rows.Next() {

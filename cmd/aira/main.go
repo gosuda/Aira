@@ -72,6 +72,8 @@ func run() error {
 	// Create agent registry and register backends.
 	registry := agent.NewRegistry()
 	registry.Register("claude", backends.NewClaudeBackend)
+	registry.Register("codex", backends.NewCodexBackend)
+	registry.Register("opencode", backends.NewOpenCodeBackend)
 
 	// Create volume manager using Docker client.
 	volumes := agent.NewVolumeManager(dockerRuntime.Client())

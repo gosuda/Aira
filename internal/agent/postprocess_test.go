@@ -78,6 +78,14 @@ func (m *mockAgentSessionRepo) ListByProject(context.Context, uuid.UUID, uuid.UU
 	return nil, nil
 }
 
+func (m *mockAgentSessionRepo) ListByProjectPaginated(context.Context, uuid.UUID, uuid.UUID, int, int) ([]*domain.AgentSession, error) {
+	return nil, nil
+}
+
+func (m *mockAgentSessionRepo) CountByProject(context.Context, uuid.UUID, uuid.UUID) (int64, error) {
+	return 0, nil
+}
+
 // --- extractDecisions pattern matching tests (tested via ExtractImplicitADRs) ---
 
 func TestExtractImplicitADRs_PatternMatching(t *testing.T) {

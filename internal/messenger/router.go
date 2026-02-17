@@ -22,14 +22,21 @@ var ErrQuestionAlreadyAnswered = errors.New("messenger: question already answere
 // can resume the agent session.
 type HITLCallback func(ctx context.Context, sessionID, tenantID uuid.UUID, answer string) error
 
+// EscalationConfig configures who to notify when a HITL question times out.
+type EscalationConfig struct {
+	Platform  string // messenger platform for escalation
+	ChannelID string // channel or user ID to escalate to
+	Enabled   bool
+}
+
 // Router routes AI-generated questions to messenger threads and collects human responses.
 // It bridges the agent orchestrator and the chat platform.
 type Router struct {
-	questions HITLQuestionRepository
-	messenger Messenger
-	callback  HITLCallback
-
+	questions    HITLQuestionRepository
+	messenger    Messenger
+	callback     HITLCallback
 	pollInterval time.Duration
+	escalation   EscalationConfig
 }
 
 // HITLQuestionRepository is a subset of domain.HITLQuestionRepository used by the router.
@@ -48,6 +55,13 @@ type RouterOption func(*Router)
 func WithPollInterval(d time.Duration) RouterOption {
 	return func(r *Router) {
 		r.pollInterval = d
+	}
+}
+
+// WithEscalation configures timeout escalation notifications.
+func WithEscalation(cfg EscalationConfig) RouterOption {
+	return func(r *Router) {
+		r.escalation = cfg
 	}
 }
 
@@ -196,9 +210,22 @@ func (r *Router) processExpiredQuestions(ctx context.Context) {
 			continue
 		}
 
-		// Log timeout — actual messenger notification requires channel context
-		// which is not stored in the HITL question. Phase 1C Slack implementation
-		// will handle timeout notifications via the Slack thread directly.
+		// Best-effort: update the original thread with a timeout message.
+		timeoutMsg := "Question timed out: " + q.Question
+		updateErr := r.messenger.UpdateMessage(ctx, q.MessengerThreadID, MessageID(q.MessengerThreadID), timeoutMsg)
+		if updateErr != nil {
+			log.Printf("messenger.Router: update thread %s with timeout: %v", q.MessengerThreadID, updateErr)
+		}
+
+		// Escalation: send notification to configured escalation channel.
+		if r.escalation.Enabled {
+			escMsg := fmt.Sprintf("HITL question timed out (session %s): %s", q.AgentSessionID, q.Question)
+			_, escErr := r.messenger.SendMessage(ctx, r.escalation.ChannelID, escMsg)
+			if escErr != nil {
+				log.Printf("messenger.Router: escalation for question %s: %v", q.ID.String(), escErr)
+			}
+		}
+
 		log.Printf("messenger.Router: question %s timed out: %s", q.ID.String(), q.Question)
 	}
 }

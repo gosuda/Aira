@@ -22,9 +22,26 @@ type mockMessenger struct {
 	threadID   messenger.ThreadID
 	threadErr  error
 	platform   string
+
+	// New fields for escalation tests
+	updateMsgErr   error
+	updateMsgCalls []updateMsgCall
+	sendMsgCalls   []sendMsgCall
 }
 
-func (m *mockMessenger) SendMessage(_ context.Context, _, _ string) (messenger.MessageID, error) {
+type updateMsgCall struct {
+	channelID string
+	messageID messenger.MessageID
+	text      string
+}
+
+type sendMsgCall struct {
+	channelID string
+	text      string
+}
+
+func (m *mockMessenger) SendMessage(_ context.Context, channelID, text string) (messenger.MessageID, error) {
+	m.sendMsgCalls = append(m.sendMsgCalls, sendMsgCall{channelID: channelID, text: text})
 	if m.sendMsgErr != nil {
 		return "", m.sendMsgErr
 	}
@@ -38,8 +55,9 @@ func (m *mockMessenger) CreateThread(_ context.Context, _ string, _ messenger.Me
 	return m.threadID, nil
 }
 
-func (m *mockMessenger) UpdateMessage(context.Context, string, messenger.MessageID, string) error {
-	return nil
+func (m *mockMessenger) UpdateMessage(_ context.Context, channelID string, messageID messenger.MessageID, text string) error {
+	m.updateMsgCalls = append(m.updateMsgCalls, updateMsgCall{channelID: channelID, messageID: messageID, text: text})
+	return m.updateMsgErr
 }
 
 func (m *mockMessenger) SendNotification(context.Context, string, string) error { return nil }
@@ -416,5 +434,144 @@ func TestStartTimeoutWatcher_ProcessesExpiredQuestions(t *testing.T) {
 
 		// No IDs should be in cancelledIDs because all cancels failed.
 		assert.Empty(t, repo.cancelledIDs)
+	})
+}
+
+// --- Escalation tests ---
+
+func TestProcessExpiredQuestions_Escalation(t *testing.T) {
+	t.Parallel()
+
+	q1ID := uuid.New()
+	sessionID := uuid.New()
+	tenantID := uuid.New()
+
+	t.Run("timeout updates thread and sends escalation", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &mockHITLQuestionRepo{
+			listExpiredResult: []*domain.HITLQuestion{
+				{
+					ID:                q1ID,
+					TenantID:          tenantID,
+					AgentSessionID:    sessionID,
+					Question:          "Which DB?",
+					MessengerThreadID: "thread-99",
+					MessengerPlatform: "slack",
+				},
+			},
+		}
+		msg := &mockMessenger{platform: "slack", sendMsgID: "esc-msg-1"}
+		callbackFn := func(context.Context, uuid.UUID, uuid.UUID, string) error { return nil }
+
+		router := messenger.NewRouter(repo, msg, callbackFn,
+			messenger.WithPollInterval(10*time.Millisecond),
+			messenger.WithEscalation(messenger.EscalationConfig{
+				Platform:  "slack",
+				ChannelID: "escalation-channel",
+				Enabled:   true,
+			}),
+		)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
+
+		router.StartTimeoutWatcher(ctx)
+
+		// Question was cancelled.
+		assert.Contains(t, repo.cancelledIDs, q1ID)
+
+		// UpdateMessage was called for timeout.
+		require.NotEmpty(t, msg.updateMsgCalls)
+		assert.Contains(t, msg.updateMsgCalls[0].text, "timed out")
+
+		// Escalation message was sent.
+		require.NotEmpty(t, msg.sendMsgCalls)
+		assert.Equal(t, "escalation-channel", msg.sendMsgCalls[0].channelID)
+		assert.Contains(t, msg.sendMsgCalls[0].text, "timed out")
+		assert.Contains(t, msg.sendMsgCalls[0].text, sessionID.String())
+	})
+
+	t.Run("escalation disabled skips SendMessage", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &mockHITLQuestionRepo{
+			listExpiredResult: []*domain.HITLQuestion{
+				{
+					ID:                q1ID,
+					TenantID:          tenantID,
+					AgentSessionID:    sessionID,
+					Question:          "Which DB?",
+					MessengerThreadID: "thread-99",
+					MessengerPlatform: "slack",
+				},
+			},
+		}
+		msg := &mockMessenger{platform: "slack"}
+		callbackFn := func(context.Context, uuid.UUID, uuid.UUID, string) error { return nil }
+
+		router := messenger.NewRouter(repo, msg, callbackFn,
+			messenger.WithPollInterval(10*time.Millisecond),
+			messenger.WithEscalation(messenger.EscalationConfig{
+				Enabled: false,
+			}),
+		)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
+
+		router.StartTimeoutWatcher(ctx)
+
+		assert.Contains(t, repo.cancelledIDs, q1ID)
+
+		// UpdateMessage still called for timeout thread.
+		require.NotEmpty(t, msg.updateMsgCalls)
+
+		// No escalation messages.
+		assert.Empty(t, msg.sendMsgCalls)
+	})
+
+	t.Run("UpdateMessage error logs and continues", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &mockHITLQuestionRepo{
+			listExpiredResult: []*domain.HITLQuestion{
+				{
+					ID:                q1ID,
+					TenantID:          tenantID,
+					AgentSessionID:    sessionID,
+					Question:          "Which DB?",
+					MessengerThreadID: "thread-99",
+					MessengerPlatform: "slack",
+				},
+			},
+		}
+		msg := &mockMessenger{
+			platform:     "slack",
+			updateMsgErr: errors.New("update failed"),
+			sendMsgID:    "esc-msg-1",
+		}
+		callbackFn := func(context.Context, uuid.UUID, uuid.UUID, string) error { return nil }
+
+		router := messenger.NewRouter(repo, msg, callbackFn,
+			messenger.WithPollInterval(10*time.Millisecond),
+			messenger.WithEscalation(messenger.EscalationConfig{
+				Platform:  "slack",
+				ChannelID: "escalation-channel",
+				Enabled:   true,
+			}),
+		)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
+
+		router.StartTimeoutWatcher(ctx)
+
+		// Question still cancelled despite UpdateMessage error.
+		assert.Contains(t, repo.cancelledIDs, q1ID)
+
+		// Escalation still sent despite UpdateMessage error.
+		require.NotEmpty(t, msg.sendMsgCalls)
+		assert.Equal(t, "escalation-channel", msg.sendMsgCalls[0].channelID)
 	})
 }

@@ -47,4 +47,6 @@ type AgentSessionRepository interface {
 	SetCompleted(ctx context.Context, id uuid.UUID, err string) error
 	ListByTask(ctx context.Context, tenantID, taskID uuid.UUID) ([]*AgentSession, error)
 	ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*AgentSession, error)
+	ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*AgentSession, error)
+	CountByProject(ctx context.Context, tenantID, projectID uuid.UUID) (int64, error)
 }
