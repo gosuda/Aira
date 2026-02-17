@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gosuda/aira/internal/domain"
+	"github.com/gosuda/aira/internal/secrets"
 )
 
 type Store struct {
@@ -21,6 +22,7 @@ type Store struct {
 	hitl         *HITLRepo
 	audit        *AuditRepo
 	sessionLogs  *SessionLogRepo
+	secrets      *SecretRepo
 }
 
 func New(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
@@ -54,6 +56,7 @@ func New(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 		hitl:         NewHITLRepo(pool),
 		audit:        NewAuditRepo(pool),
 		sessionLogs:  NewSessionLogRepo(pool),
+		secrets:      NewSecretRepo(pool),
 	}, nil
 }
 
@@ -71,3 +74,4 @@ func (s *Store) AgentSessions() domain.AgentSessionRepository { return s.agents 
 func (s *Store) HITL() domain.HITLQuestionRepository          { return s.hitl }
 func (s *Store) Audit() domain.AuditRepository                { return s.audit }
 func (s *Store) SessionLogs() domain.SessionLogRepository     { return s.sessionLogs }
+func (s *Store) Secrets() secrets.SecretRepository            { return s.secrets }

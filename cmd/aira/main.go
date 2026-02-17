@@ -74,6 +74,7 @@ func run() error {
 	registry.Register("claude", backends.NewClaudeBackend)
 	registry.Register("codex", backends.NewCodexBackend)
 	registry.Register("opencode", backends.NewOpenCodeBackend)
+	registry.Register("acp", backends.NewACPBackend)
 
 	// Create volume manager using Docker client.
 	volumes := agent.NewVolumeManager(dockerRuntime.Client())

@@ -13,7 +13,7 @@ type User struct {
 	Email        string // may be empty for OAuth-only users
 	PasswordHash string // argon2id, empty if OAuth-only
 	Name         string
-	Role         string // "admin" or "member"
+	Role         string // "admin", "member", or "viewer"
 	AvatarURL    string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

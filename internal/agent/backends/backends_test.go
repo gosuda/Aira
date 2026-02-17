@@ -347,6 +347,159 @@ func TestOpenCodeTransport_ParseToolCall(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// ACP Transport tests
+// ---------------------------------------------------------------------------
+
+func TestACPTransport_AgentName(t *testing.T) {
+	t.Parallel()
+
+	transport := &backends.ACPTransport{}
+	assert.Equal(t, "acp", transport.AgentName())
+}
+
+func TestACPTransport_Timeouts(t *testing.T) {
+	t.Parallel()
+
+	transport := &backends.ACPTransport{}
+	assert.Equal(t, 60*time.Second, transport.InitTimeout())
+	assert.Equal(t, 15*time.Minute, transport.IdleTimeout())
+}
+
+func TestACPTransport_FilterOutput(t *testing.T) {
+	t.Parallel()
+
+	transport := &backends.ACPTransport{}
+
+	tests := []struct {
+		name     string
+		input    string
+		wantOut  string
+		wantKeep bool
+	}{
+		{
+			name:     "empty line filtered",
+			input:    "",
+			wantOut:  "",
+			wantKeep: false,
+		},
+		{
+			name:     "whitespace only filtered",
+			input:    "   \t  ",
+			wantOut:  "",
+			wantKeep: false,
+		},
+		{
+			name:     "normal line kept",
+			input:    `{"method":"result","params":{"content":"hello"}}`,
+			wantOut:  `{"method":"result","params":{"content":"hello"}}`,
+			wantKeep: true,
+		},
+		{
+			name:     "docker header stripped",
+			input:    "\x01\x00\x00\x00\x00\x00\x00\x2a" + `{"method":"result"}`,
+			wantOut:  `{"method":"result"}`,
+			wantKeep: true,
+		},
+		{
+			name:     "short binary prefix filtered",
+			input:    "\x01\x02\x03",
+			wantOut:  "",
+			wantKeep: false,
+		},
+		{
+			name:     "acp debug line filtered",
+			input:    "acp: debug connecting to endpoint",
+			wantOut:  "",
+			wantKeep: false,
+		},
+		{
+			name:     "acp debug line filtered case insensitive",
+			input:    "ACP: Debug initializing client",
+			wantOut:  "",
+			wantKeep: false,
+		},
+		{
+			name:     "acp info line kept",
+			input:    "acp: info session started",
+			wantOut:  "acp: info session started",
+			wantKeep: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			out, keep := transport.FilterOutput(tt.input)
+			assert.Equal(t, tt.wantKeep, keep)
+			if keep {
+				assert.Equal(t, tt.wantOut, out)
+			}
+		})
+	}
+}
+
+func TestACPTransport_ParseToolCall(t *testing.T) {
+	t.Parallel()
+
+	transport := &backends.ACPTransport{}
+
+	t.Run("valid tool_call parsed", func(t *testing.T) {
+		t.Parallel()
+
+		raw := json.RawMessage(`{"method":"tool_call","params":{"tool":"read_file","arguments":{"path":"/foo"},"id":"tc_acp_1"}}`)
+		tc, err := transport.ParseToolCall(raw)
+
+		require.NoError(t, err)
+		assert.Equal(t, "read_file", tc.Name)
+		assert.Equal(t, "tc_acp_1", tc.CallID)
+		assert.JSONEq(t, `{"path":"/foo"}`, string(tc.Input))
+	})
+
+	t.Run("non-tool_call rejected", func(t *testing.T) {
+		t.Parallel()
+
+		raw := json.RawMessage(`{"method":"result","params":{"content":"hello"}}`)
+		_, err := transport.ParseToolCall(raw)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a tool_call event")
+	})
+
+	t.Run("invalid JSON rejected", func(t *testing.T) {
+		t.Parallel()
+
+		raw := json.RawMessage(`{not valid json}`)
+		_, err := transport.ParseToolCall(raw)
+
+		require.Error(t, err)
+	})
+}
+
+func TestNewACPBackend(t *testing.T) {
+	t.Parallel()
+
+	backend, err := backends.NewACPBackend(nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, backend)
+}
+
+func TestACPBackend_OnMessage(t *testing.T) {
+	t.Parallel()
+
+	backend, err := backends.NewACPBackend(nil)
+	require.NoError(t, err)
+
+	called := false
+	backend.OnMessage(func(_ agent.Message) {
+		called = true
+	})
+
+	// Handler is registered but not invoked without a session — just verify no panic.
+	assert.False(t, called)
+}
+
+// ---------------------------------------------------------------------------
 // Registry integration tests
 // ---------------------------------------------------------------------------
 
@@ -365,12 +518,27 @@ func TestRegistry_AllBackendsRegistered(t *testing.T) {
 	t.Parallel()
 
 	registry := agent.NewRegistry()
+	registry.Register("acp", backends.NewACPBackend)
 	registry.Register("claude", backends.NewClaudeBackend)
 	registry.Register("codex", backends.NewCodexBackend)
 	registry.Register("opencode", backends.NewOpenCodeBackend)
 
 	available := registry.Available()
-	assert.Equal(t, []string{"claude", "codex", "opencode"}, available)
+	assert.Equal(t, []string{"acp", "claude", "codex", "opencode"}, available)
+}
+
+func TestRegistry_CreateACP(t *testing.T) {
+	t.Parallel()
+
+	registry := agent.NewRegistry()
+	registry.Register("acp", func(_ *agent.DockerRuntime) (agent.AgentBackend, error) {
+		return &stubBackend{}, nil
+	})
+
+	backend, err := registry.Create("acp", nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, backend)
 }
 
 func TestRegistry_CreateCodex(t *testing.T) {

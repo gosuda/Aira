@@ -13,6 +13,20 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+// HTTPClient abstracts HTTP calls for testability. The standard *http.Client
+// satisfies this interface.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// OAuthUserInfo contains the user information returned by an OAuth2 provider.
+type OAuthUserInfo struct {
+	ProviderID string // unique ID from the provider
+	Email      string
+	Name       string
+	AvatarURL  string
+}
+
 // OAuthProvider holds the configuration for an OAuth2 identity provider.
 type OAuthProvider struct {
 	Name         string
@@ -23,6 +37,10 @@ type OAuthProvider struct {
 	UserInfoURL  string
 	Scopes       []string
 	RedirectURL  string
+
+	// HTTPClient overrides the default HTTP client used for user info requests.
+	// When nil, the OAuth2-token-bearing client is used (production default).
+	HTTPClient HTTPClient
 
 	// oauthConfig is the compiled oauth2.Config.
 	oauthConfig *oauth2.Config
@@ -79,33 +97,41 @@ func (p *OAuthProvider) AuthorizationURL(state string) string {
 }
 
 // ExchangeCode exchanges an authorization code for tokens and fetches user info.
-// Returns the provider-side user ID, email, display name, and avatar URL.
-func (p *OAuthProvider) ExchangeCode(ctx context.Context, code string) (providerID, email, name, avatarURL string, err error) {
+// Returns an OAuthUserInfo with the provider-side user ID, email, display name,
+// and avatar URL.
+func (p *OAuthProvider) ExchangeCode(ctx context.Context, code string) (*OAuthUserInfo, error) {
 	token, err := p.oauthConfig.Exchange(ctx, code)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: %w", err)
+		return nil, fmt.Errorf("auth.ExchangeCode: %w", err)
 	}
 
-	client := p.oauthConfig.Client(ctx, token)
+	// Use injected HTTPClient if set (tests), otherwise use the OAuth2
+	// token-bearing client (production).
+	var client HTTPClient
+	if p.HTTPClient != nil {
+		client = p.HTTPClient
+	} else {
+		client = p.oauthConfig.Client(ctx, token)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.UserInfoURL, http.NoBody)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: creating request: %w", err)
+		return nil, fmt.Errorf("auth.ExchangeCode: creating request: %w", err)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: fetching user info: %w", err)
+		return nil, fmt.Errorf("auth.ExchangeCode: fetching user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: user info returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("auth.ExchangeCode: user info returned %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: reading user info: %w", err)
+		return nil, fmt.Errorf("auth.ExchangeCode: reading user info: %w", err)
 	}
 
 	switch p.Name {
@@ -114,28 +140,32 @@ func (p *OAuthProvider) ExchangeCode(ctx context.Context, code string) (provider
 	case "github":
 		return parseGitHubUserInfo(body)
 	default:
-		return "", "", "", "", fmt.Errorf("auth.ExchangeCode: unsupported provider %q", p.Name)
+		return nil, fmt.Errorf("auth.ExchangeCode: unsupported provider %q", p.Name)
 	}
 }
 
-type googleUserInfo struct {
+type googleUserInfoResp struct {
 	ID      string `json:"id"`
 	Email   string `json:"email"`
 	Name    string `json:"name"`
 	Picture string `json:"picture"`
 }
 
-func parseGoogleUserInfo(data []byte) (providerID, email, name, avatarURL string, err error) {
-	var info googleUserInfo
-	err = json.Unmarshal(data, &info)
-	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.parseGoogleUserInfo: %w", err)
+func parseGoogleUserInfo(data []byte) (*OAuthUserInfo, error) {
+	var info googleUserInfoResp
+	if err := json.Unmarshal(data, &info); err != nil {
+		return nil, fmt.Errorf("auth.parseGoogleUserInfo: %w", err)
 	}
 
-	return info.ID, info.Email, info.Name, info.Picture, nil
+	return &OAuthUserInfo{
+		ProviderID: info.ID,
+		Email:      info.Email,
+		Name:       info.Name,
+		AvatarURL:  info.Picture,
+	}, nil
 }
 
-type gitHubUserInfo struct {
+type gitHubUserInfoResp struct {
 	ID        int    `json:"id"`
 	Login     string `json:"login"`
 	Name      string `json:"name"`
@@ -143,11 +173,10 @@ type gitHubUserInfo struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-func parseGitHubUserInfo(data []byte) (providerID, email, name, avatarURL string, err error) {
-	var info gitHubUserInfo
-	err = json.Unmarshal(data, &info)
-	if err != nil {
-		return "", "", "", "", fmt.Errorf("auth.parseGitHubUserInfo: %w", err)
+func parseGitHubUserInfo(data []byte) (*OAuthUserInfo, error) {
+	var info gitHubUserInfoResp
+	if err := json.Unmarshal(data, &info); err != nil {
+		return nil, fmt.Errorf("auth.parseGitHubUserInfo: %w", err)
 	}
 
 	displayName := info.Name
@@ -155,5 +184,10 @@ func parseGitHubUserInfo(data []byte) (providerID, email, name, avatarURL string
 		displayName = info.Login
 	}
 
-	return strconv.Itoa(info.ID), info.Email, displayName, info.AvatarURL, nil
+	return &OAuthUserInfo{
+		ProviderID: strconv.Itoa(info.ID),
+		Email:      info.Email,
+		Name:       displayName,
+		AvatarURL:  info.AvatarURL,
+	}, nil
 }
