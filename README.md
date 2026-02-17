@@ -17,15 +17,18 @@ This is not merely a tool. It is the foundation of the next chapter in the devel
 
 ---
 
+
 ## Features
 
+- **Architectural Decision Records in Kanban** — AI auto-generates ADRs from every major change and displays them in a beautiful, searchable Kanban board
 - **Zero-friction commands** — `@aira fix the auth bug` or `@aira add user profile page` from any chat
 - **Full agent-native execution** — code reading, editing, testing, CI, deployment
-- **True human-in-the-loop** — live push notifications with precise diffs, test results, and one-tap approve/rollback
-- **Multi-platform support** — Slack, Discord, Telegram, Linear, Jira, email, mobile (iOS/Android)
+- **True Human-in-the-Loop inside messengers** — every AI `question` tool is automatically turned into an interactive thread in Slack/Discord/Telegram. You simply reply in the same chat.
+- **Live push notifications** — optional alerts when you’re offline (summary + direct link back to the thread)
+- **Multi-platform support** — Slack, Discord, Telegram, Linear, Jira, email, mobile
 - **Native agent framework support** — Claude Agent SDK, OpenCode, Codex, and more
 - **Enterprise-ready** — concurrency, state persistence, audit logs, rollback, secret management
-- **Language & stack agnostic** — works with any codebase (Go, TypeScript, Python, Rust, etc.)
+- **Language & stack agnostic** — works with any codebase
 - **Self-hosted or cloud** — Docker, Kubernetes, or one-click deploy
 
 ---
@@ -34,14 +37,15 @@ This is not merely a tool. It is the foundation of the next chapter in the devel
 
 1. You send a natural-language command in any supported chat
 2. Aira spins up specialized AI agents that:
-   - Clone / read the latest codebase
-   - Plan changes with architectural awareness
-   - Edit files via agent SDK
-   - Run tests locally and in CI
-   - Generate PR or deploy directly (configurable)
-3. You receive a **live push notification** with summary + key diffs + test status
-4. One tap: Approve → merge & deploy / Reject → rollback
-5. You only review the big picture. Everything else is handled.
+   - Read the latest codebase
+   - Plan changes (and record the architectural decision)
+   - Edit files, run tests, and deploy
+3. Every architectural decision is saved as an ADR and moved on the Kanban board automatically
+4. When human input is required, the AI posts the precise question directly into the original chat thread (e.g. “Should we use Redis or Dragonfly for this cache?”)
+5. You reply naturally in the same thread — the AI continues instantly
+6. Live push notifications keep you in the loop even when you’re away
+
+You only review the big picture and answer questions when they appear. Everything else — including the permanent record of why — is handled.
 
 ---
 
@@ -51,17 +55,16 @@ This is not merely a tool. It is the foundation of the next chapter in the devel
 git clone https://github.com/yourorg/aira.git
 cd aira
 cp .env.example .env
-# Edit .env with your Claude / OpenAI / Anthropic keys + GitHub / Slack tokens
 docker compose up -d
 ```
 
-Then invite `@aira` to your Slack/Discord/Telegram and type:
+Invite `@aira` to your workspace and type:
 
 ```
-@aira implement dark mode toggle in the dashboard
+@aira implement dark mode toggle and record the decision
 ```
 
-Done. The AI will handle the rest and notify you when it’s ready for review.
+Aira will execute, create the ADR, update the Kanban board, and ask any questions directly in the thread.
 
 **Takes under 5 minutes to be productive.**
 
@@ -69,12 +72,13 @@ Done. The AI will handle the rest and notify you when it’s ready for review.
 
 ## Architecture
 
-- **Backend**: Go (high concurrency) or TypeScript (TypeScript-first teams) — your choice
-- **Agent Orchestration Layer**: Pluggable (Claude Agent SDK native, OpenCode, Codex)
-- **State & Persistence**: PostgreSQL + Redis
-- **Notification Engine**: Unified push (Firebase, APNs, Slack DM, Telegram, email)
-- **Security**: End-to-end encryption, least-privilege tools, full audit trail
-- **Extensibility**: Plugin system for custom tools, new chat platforms, and deployment targets
+- **Backend**: Go (recommended) or TypeScript
+- **Agent Orchestration**: Pluggable (Claude Agent SDK native first)
+- **ADR + Kanban Engine**: Built-in, versioned, searchable
+- **HITL Mapping Layer**: Automatically converts any `question` tool call into messenger threads
+- **State**: PostgreSQL + Redis
+- **Notifications**: Unified push (optional) + native in-messenger threads
+- **Security**: Full audit trail of every decision and question
 
 ---
 
@@ -89,7 +93,6 @@ Done. The AI will handle the rest and notify you when it’s ready for review.
 | Jira           | ✅         | Issue → command sync      |
 | GitHub         | ✅         | PRs, commits, deploy      |
 | GitLab / Bitbucket | ✅     | Full support              |
-| Mobile Push    | ✅         | iOS & Android             |
 
 ---
 
@@ -115,3 +118,9 @@ Done. The AI will handle the rest and notify you when it’s ready for review.
 ## License
 
 Apache 2.0 © 2026 Metaphorics
+
+---
+
+**Star this repo if you want every architectural decision to be remembered and development to move 10× faster — all inside the chats you already use.**
+
+Made with ❤️ for teams who are tired of repeating the same mistakes and switching tabs.
