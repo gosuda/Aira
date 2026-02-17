@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"math"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/gosuda/aira/internal/server"
 	"github.com/gosuda/aira/internal/store/postgres"
 	redisstore "github.com/gosuda/aira/internal/store/redis"
+	"github.com/gosuda/aira/web"
 )
 
 func main() {
@@ -86,8 +88,14 @@ func run() error {
 		pubsub,
 	)
 
+	// Prepare embedded SvelteKit assets (strip "build/" prefix from fs paths).
+	webAssets, err := fs.Sub(web.Assets, "build")
+	if err != nil {
+		return fmt.Errorf("web assets: %w", err)
+	}
+
 	// Create HTTP server with all routes wired.
-	srv := server.New(cfg, store, pubsub, authSvc, orchestrator)
+	srv := server.New(cfg, store, pubsub, authSvc, orchestrator, webAssets)
 
 	// Graceful shutdown on SIGINT / SIGTERM.
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

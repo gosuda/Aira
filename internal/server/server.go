@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -40,7 +41,9 @@ type Server struct {
 }
 
 // New creates a Server with all routes wired.
-func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator) *Server {
+// webAssets may be nil; when provided, the SvelteKit SPA is served on all
+// unmatched routes (embedded via go:embed for single-binary distribution).
+func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator, webAssets fs.FS) *Server {
 	router := chi.NewRouter()
 
 	// Global middleware stack.
@@ -131,6 +134,13 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// Serve embedded SvelteKit SPA on all unmatched routes.
+	// This must be the last route registered so API/WS/Slack routes take priority.
+	if webAssets != nil {
+		router.NotFound(spaFileServer(webAssets).ServeHTTP)
+		log.Println("server: embedded SvelteKit dashboard enabled")
+	}
 
 	return s
 }
