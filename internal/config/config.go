@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -65,7 +66,9 @@ type DockerConfig struct {
 	MemLimit     string
 }
 
-// Load reads configuration from environment variables with sensible defaults.
+// Load reads configuration from environment variables.
+// Defaults are safe for local development only. In production,
+// sensitive values (JWT secret, DB password) must be set explicitly.
 func Load() (*Config, error) {
 	dbPort, err := getEnvInt("AIRA_DB_PORT", 5432)
 	if err != nil {
@@ -112,7 +115,7 @@ func Load() (*Config, error) {
 			Host:     getEnv("AIRA_DB_HOST", "localhost"),
 			Port:     dbPort,
 			User:     getEnv("AIRA_DB_USER", "aira"),
-			Password: getEnv("AIRA_DB_PASSWORD", "aira"),
+			Password: getEnv("AIRA_DB_PASSWORD", ""),
 			DBName:   getEnv("AIRA_DB_NAME", "aira_dev"),
 			SSLMode:  getEnv("AIRA_DB_SSLMODE", "disable"),
 			MaxConns: dbMaxConns,
@@ -123,7 +126,7 @@ func Load() (*Config, error) {
 			DB:       redisDB,
 		},
 		JWT: JWTConfig{
-			Secret:     getEnv("AIRA_JWT_SECRET", "change-me-in-production"),
+			Secret:     getEnv("AIRA_JWT_SECRET", ""),
 			AccessTTL:  accessTTL,
 			RefreshTTL: refreshTTL,
 		},
@@ -146,7 +149,42 @@ func Load() (*Config, error) {
 		SelfHosted: selfHosted,
 	}
 
+	err = cfg.validate()
+	if err != nil {
+		return nil, fmt.Errorf("config.Load: %w", err)
+	}
+
 	return cfg, nil
+}
+
+// validate checks required fields and value bounds.
+func (c *Config) validate() error {
+	// JWT secret is required (no insecure default).
+	if c.JWT.Secret == "" {
+		return errors.New("AIRA_JWT_SECRET is required")
+	}
+
+	// Bounds checks.
+	if c.Database.Port < 1 || c.Database.Port > 65535 {
+		return fmt.Errorf("AIRA_DB_PORT must be 1-65535, got %d", c.Database.Port)
+	}
+	if c.Database.MaxConns < 1 {
+		return fmt.Errorf("AIRA_DB_MAX_CONNS must be >= 1, got %d", c.Database.MaxConns)
+	}
+	if c.JWT.AccessTTL <= 0 {
+		return fmt.Errorf("AIRA_JWT_ACCESS_TTL must be positive, got %s", c.JWT.AccessTTL)
+	}
+	if c.JWT.RefreshTTL <= 0 {
+		return fmt.Errorf("AIRA_JWT_REFRESH_TTL must be positive, got %s", c.JWT.RefreshTTL)
+	}
+	if c.Server.ReadTimeout <= 0 {
+		return fmt.Errorf("AIRA_SERVER_READ_TIMEOUT must be positive, got %s", c.Server.ReadTimeout)
+	}
+	if c.Server.WriteTimeout <= 0 {
+		return fmt.Errorf("AIRA_SERVER_WRITE_TIMEOUT must be positive, got %s", c.Server.WriteTimeout)
+	}
+
+	return nil
 }
 
 // DSN returns the PostgreSQL connection string.
