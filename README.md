@@ -11,7 +11,7 @@ Humans stay in the loop — faster, easier and more effective than ever with **l
 
 The real bottleneck in development is not writing code — it is human communication and verification. Aira removes unnecessary friction while preserving true human-in-the-loop control. AI takes full responsibility for every detail of execution while humans handle only direction and exceptions, accelerated by live push notifications that make oversight instant and effortless. The result is 5–10× faster development velocity and the complete disappearance of burnout.
 
-Aira is the open-source release of what Spotify, Meta, and Tesla already run internally. <https://news.ycombinator.com/item?id=46994003>
+Aira is the open-source release of what Spotify, Meta, and Tesla already run internally. (<https://news.ycombinator.com/item?id=46994003>)
 
 This is not merely a tool. It is the foundation of the next chapter in the developer ecosystem.
 
