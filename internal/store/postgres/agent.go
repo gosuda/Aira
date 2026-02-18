@@ -141,7 +141,8 @@ func (r *AgentSessionRepo) ListByProject(ctx context.Context, tenantID, projectI
 		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
 		        started_at, completed_at, error, metadata, created_at
 		 FROM agent_sessions WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY created_at DESC`,
+		 ORDER BY created_at DESC
+		 LIMIT 200`,
 		tenantID, projectID,
 	)
 	if err != nil {

@@ -121,7 +121,8 @@ func (r *HITLRepo) ListPending(ctx context.Context, tenantID uuid.UUID) ([]*doma
 		`SELECT id, tenant_id, agent_session_id, question, options, messenger_thread_id, messenger_platform,
 		        answer, answered_by, status, timeout_at, created_at, answered_at
 		 FROM hitl_questions WHERE tenant_id = $1 AND status = $2
-		 ORDER BY created_at`,
+		 ORDER BY created_at
+		 LIMIT 500`,
 		tenantID, domain.HITLStatusPending,
 	)
 	if err != nil {
@@ -137,7 +138,8 @@ func (r *HITLRepo) ListExpired(ctx context.Context) ([]*domain.HITLQuestion, err
 		`SELECT id, tenant_id, agent_session_id, question, options, messenger_thread_id, messenger_platform,
 		        answer, answered_by, status, timeout_at, created_at, answered_at
 		 FROM hitl_questions WHERE status = $1 AND timeout_at < now()
-		 ORDER BY created_at`,
+		 ORDER BY created_at
+		 LIMIT 500`,
 		domain.HITLStatusPending,
 	)
 	if err != nil {

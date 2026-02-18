@@ -102,7 +102,8 @@ func (r *ADRRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.UU
 		`SELECT id, tenant_id, project_id, sequence, title, status, context, decision,
 		        drivers, options, consequences, created_by, agent_session_id, created_at, updated_at
 		 FROM adrs WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY sequence DESC`,
+		 ORDER BY sequence DESC
+		 LIMIT 500`,
 		tenantID, projectID,
 	)
 	if err != nil {

@@ -63,7 +63,8 @@ func (r *TaskRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.U
 		`SELECT id, tenant_id, project_id, adr_id, title, description, status, priority,
 		        assigned_to, agent_session_id, created_at, updated_at
 		 FROM tasks WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY priority, created_at`,
+		 ORDER BY priority, created_at
+		 LIMIT 1000`,
 		tenantID, projectID,
 	)
 	if err != nil {
@@ -79,7 +80,8 @@ func (r *TaskRepo) ListByStatus(ctx context.Context, tenantID, projectID uuid.UU
 		`SELECT id, tenant_id, project_id, adr_id, title, description, status, priority,
 		        assigned_to, agent_session_id, created_at, updated_at
 		 FROM tasks WHERE tenant_id = $1 AND project_id = $2 AND status = $3
-		 ORDER BY priority, created_at`,
+		 ORDER BY priority, created_at
+		 LIMIT 1000`,
 		tenantID, projectID, status,
 	)
 	if err != nil {

@@ -106,7 +106,8 @@ func (r *UserRepo) Update(ctx context.Context, u *domain.User) error {
 func (r *UserRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.User, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, email, password_hash, name, role, avatar_url, created_at, updated_at
-		 FROM users WHERE tenant_id = $1 ORDER BY created_at`,
+		 FROM users WHERE tenant_id = $1 ORDER BY created_at
+		 LIMIT 500`,
 		tenantID,
 	)
 	if err != nil {
