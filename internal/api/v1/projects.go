@@ -155,6 +155,9 @@ func RegisterProjectRoutes(api huma.API, store DataStore) {
 			existing.Name = input.Body.Name
 		}
 		if input.Body.RepoURL != "" {
+			if !strings.HasPrefix(input.Body.RepoURL, "https://") && !strings.HasPrefix(input.Body.RepoURL, "git@") {
+				return nil, huma.Error400BadRequest("repo_url must use https:// or git@ scheme")
+			}
 			existing.RepoURL = input.Body.RepoURL
 		}
 		if input.Body.Branch != "" {

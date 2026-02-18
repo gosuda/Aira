@@ -96,11 +96,13 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.agentSessions != nil {
-		if _, lookupErr := h.agentSessions.GetByID(r.Context(), tenantID, sessionID); lookupErr != nil {
-			http.Error(w, "session not found", http.StatusForbidden)
-			return
-		}
+	if h.agentSessions == nil {
+		http.Error(w, "agent session lookup unavailable", http.StatusInternalServerError)
+		return
+	}
+	if _, lookupErr := h.agentSessions.GetByID(r.Context(), tenantID, sessionID); lookupErr != nil {
+		http.Error(w, "session not found", http.StatusForbidden)
+		return
 	}
 
 	conn, err := websocket.Accept(w, r, nil)

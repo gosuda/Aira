@@ -44,7 +44,7 @@ type AgentSessionRepository interface {
 	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*AgentSession, error)
 	UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status AgentSessionStatus) error
 	UpdateContainer(ctx context.Context, tenantID, id uuid.UUID, containerID, branchName string) error
-	SetCompleted(ctx context.Context, id uuid.UUID, err string) error
+	SetCompleted(ctx context.Context, tenantID, id uuid.UUID, err string) error
 	ListByTask(ctx context.Context, tenantID, taskID uuid.UUID) ([]*AgentSession, error)
 	ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*AgentSession, error)
 	ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*AgentSession, error)

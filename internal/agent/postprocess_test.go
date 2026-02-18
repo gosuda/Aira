@@ -59,7 +59,9 @@ func (m *mockAgentSessionRepo) UpdateStatus(context.Context, uuid.UUID, uuid.UUI
 func (m *mockAgentSessionRepo) UpdateContainer(context.Context, uuid.UUID, uuid.UUID, string, string) error {
 	return nil
 }
-func (m *mockAgentSessionRepo) SetCompleted(context.Context, uuid.UUID, string) error { return nil }
+func (m *mockAgentSessionRepo) SetCompleted(context.Context, uuid.UUID, uuid.UUID, string) error {
+	return nil
+}
 func (m *mockAgentSessionRepo) ListByTask(context.Context, uuid.UUID, uuid.UUID) ([]*domain.AgentSession, error) {
 	return nil, nil
 }

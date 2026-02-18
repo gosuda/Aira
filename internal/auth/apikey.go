@@ -91,7 +91,7 @@ func (s *Service) ValidateAPIKey(ctx context.Context, rawKey string) (*domain.Us
 	}
 
 	// Update last used timestamp (fire and forget).
-	if updateErr := s.userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID); updateErr != nil {
+	if updateErr := s.userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.TenantID, apiKey.ID); updateErr != nil {
 		log.Warn().Err(updateErr).Str("api_key_id", apiKey.ID.String()).Msg("auth.ValidateAPIKey: failed to update last_used_at")
 	}
 

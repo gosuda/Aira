@@ -185,7 +185,7 @@ type mockAgentSessionRepo struct {
 	getByIDFunc                func(ctx context.Context, tenantID, id uuid.UUID) (*domain.AgentSession, error)
 	updateStatusFunc           func(ctx context.Context, tenantID, id uuid.UUID, status domain.AgentSessionStatus) error
 	updateContainerFunc        func(ctx context.Context, tenantID, id uuid.UUID, containerID, branchName string) error
-	setCompletedFunc           func(ctx context.Context, id uuid.UUID, err string) error
+	setCompletedFunc           func(ctx context.Context, tenantID, id uuid.UUID, err string) error
 	listByTaskFunc             func(ctx context.Context, tenantID, taskID uuid.UUID) ([]*domain.AgentSession, error)
 	listByProjectFunc          func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.AgentSession, error)
 	listByProjectPaginatedFunc func(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.AgentSession, error)
@@ -208,8 +208,8 @@ func (m *mockAgentSessionRepo) UpdateContainer(ctx context.Context, tenantID, id
 	return m.updateContainerFunc(ctx, tenantID, id, containerID, branchName)
 }
 
-func (m *mockAgentSessionRepo) SetCompleted(ctx context.Context, id uuid.UUID, err string) error {
-	return m.setCompletedFunc(ctx, id, err)
+func (m *mockAgentSessionRepo) SetCompleted(ctx context.Context, tenantID, id uuid.UUID, err string) error {
+	return m.setCompletedFunc(ctx, tenantID, id, err)
 }
 
 func (m *mockAgentSessionRepo) ListByTask(ctx context.Context, tenantID, taskID uuid.UUID) ([]*domain.AgentSession, error) {

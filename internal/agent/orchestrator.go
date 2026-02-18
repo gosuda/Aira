@@ -274,7 +274,7 @@ func (o *Orchestrator) CancelSession(ctx context.Context, tenantID, sessionID uu
 // completeSession handles agent completion (called when container exits).
 func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID uuid.UUID, exitErr string) {
 	if exitErr == "" {
-		if err := o.sessions.SetCompleted(ctx, sessionID, ""); err != nil {
+		if err := o.sessions.SetCompleted(ctx, tenantID, sessionID, ""); err != nil {
 			log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.completeSession: failed to set completed")
 		}
 
@@ -286,7 +286,7 @@ func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID 
 			}
 		}
 	} else {
-		if err := o.sessions.SetCompleted(ctx, sessionID, exitErr); err != nil {
+		if err := o.sessions.SetCompleted(ctx, tenantID, sessionID, exitErr); err != nil {
 			log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.completeSession: failed to set completed with error")
 		}
 	}
@@ -424,6 +424,7 @@ func (o *Orchestrator) pollCompletion(ctx context.Context, sessionID, tenantID u
 
 			session, err := o.sessions.GetByID(ctx, tenantID, sessionID)
 			if err != nil {
+				log.Warn().Err(err).Str("session_id", sessionID.String()).Msg("agent.pollCompletion: failed to get session status")
 				continue
 			}
 
@@ -439,7 +440,7 @@ func (o *Orchestrator) pollCompletion(ctx context.Context, sessionID, tenantID u
 }
 
 func (o *Orchestrator) failSession(ctx context.Context, sessionID, tenantID uuid.UUID, errMsg string) {
-	if err := o.sessions.SetCompleted(ctx, sessionID, errMsg); err != nil {
+	if err := o.sessions.SetCompleted(ctx, tenantID, sessionID, errMsg); err != nil {
 		log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.failSession: failed to set session failed")
 	}
 	o.cleanupWorktree(ctx, sessionID, tenantID)

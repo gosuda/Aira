@@ -30,15 +30,15 @@ var errNotFound = errors.New("api key not found")
 // for API key authentication. All other methods panic if called.
 type mockUserRepo struct {
 	getAPIKeyByPrefixFunc    func(ctx context.Context, tenantID uuid.UUID, prefix string) (*domain.APIKey, error)
-	updateAPIKeyLastUsedFunc func(ctx context.Context, id uuid.UUID) error
+	updateAPIKeyLastUsedFunc func(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
 func (m *mockUserRepo) GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, prefix string) (*domain.APIKey, error) {
 	return m.getAPIKeyByPrefixFunc(ctx, tenantID, prefix)
 }
 
-func (m *mockUserRepo) UpdateAPIKeyLastUsed(ctx context.Context, id uuid.UUID) error {
-	return m.updateAPIKeyLastUsedFunc(ctx, id)
+func (m *mockUserRepo) UpdateAPIKeyLastUsed(ctx context.Context, tenantID, id uuid.UUID) error {
+	return m.updateAPIKeyLastUsedFunc(ctx, tenantID, id)
 }
 
 // Stub methods — not exercised by Auth middleware.
@@ -60,7 +60,7 @@ func (m *mockUserRepo) CreateOAuthLink(_ context.Context, _ *domain.UserOAuthLin
 func (m *mockUserRepo) GetOAuthLink(_ context.Context, _, _ string) (*domain.UserOAuthLink, error) {
 	panic("not implemented")
 }
-func (m *mockUserRepo) DeleteOAuthLink(_ context.Context, _ uuid.UUID) error {
+func (m *mockUserRepo) DeleteOAuthLink(_ context.Context, _, _ uuid.UUID) error {
 	panic("not implemented")
 }
 func (m *mockUserRepo) CreateMessengerLink(_ context.Context, _ *domain.UserMessengerLink) error {
@@ -366,7 +366,7 @@ func newMockRepo() *mockUserRepo {
 		getAPIKeyByPrefixFunc: func(_ context.Context, _ uuid.UUID, _ string) (*domain.APIKey, error) {
 			return nil, errNotFound
 		},
-		updateAPIKeyLastUsedFunc: func(_ context.Context, _ uuid.UUID) error {
+		updateAPIKeyLastUsedFunc: func(_ context.Context, _, _ uuid.UUID) error {
 			return nil
 		},
 	}

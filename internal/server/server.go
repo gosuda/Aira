@@ -111,6 +111,7 @@ func New(ctx context.Context, cfg *config.Config, store *postgres.Store, pubsub 
 	// WebSocket routes.
 	router.Route("/ws", func(r chi.Router) {
 		r.Use(middleware.Auth(cfg.JWT.Secret, store.Users()))
+		r.Use(middleware.RequireTenant())
 		registerWSRoutes(r, hub)
 	})
 

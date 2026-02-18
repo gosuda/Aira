@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -99,7 +100,7 @@ func authenticateAPIKey(ctx context.Context, rawKey string, userRepo domain.User
 		return ctx, false
 	}
 
-	if apiKey.KeyHash != keyHash {
+	if subtle.ConstantTimeCompare([]byte(apiKey.KeyHash), []byte(keyHash)) != 1 {
 		return ctx, false
 	}
 
@@ -109,7 +110,7 @@ func authenticateAPIKey(ctx context.Context, rawKey string, userRepo domain.User
 	}
 
 	// Update last used timestamp (fire and forget).
-	if updateErr := userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID); updateErr != nil {
+	if updateErr := userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.TenantID, apiKey.ID); updateErr != nil {
 		log.Warn().Err(updateErr).Str("api_key_id", apiKey.ID.String()).Msg("auth: failed to update api key last_used_at")
 	}
 

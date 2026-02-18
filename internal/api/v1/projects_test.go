@@ -336,6 +336,44 @@ func TestUpdateProject(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
+	t.Run("invalid_repo_url_scheme", func(t *testing.T) {
+		t.Parallel()
+
+		tid := uuid.New()
+		pid := uuid.New()
+		existing := &domain.Project{
+			ID:        pid,
+			TenantID:  tid,
+			Name:      "original",
+			RepoURL:   "https://github.com/org/repo",
+			Branch:    "main",
+			Settings:  json.RawMessage("{}"),
+			CreatedAt: time.Now().Truncate(time.Second),
+		}
+
+		var updateCalled bool
+		_, api := humatest.New(t)
+		store := &mockDataStore{
+			projects: &mockProjectRepo{
+				getByIDFunc: func(_ context.Context, _, _ uuid.UUID) (*domain.Project, error) {
+					return existing, nil
+				},
+				updateFunc: func(_ context.Context, _ *domain.Project) error {
+					updateCalled = true
+					return nil
+				},
+			},
+		}
+		v1.RegisterProjectRoutes(api, store)
+
+		resp := api.PutCtx(tenantCtx(tid), "/projects/"+pid.String(), map[string]any{
+			"repo_url": "http://github.com/org/insecure",
+		})
+
+		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.False(t, updateCalled, "Update must NOT be called for invalid repo_url scheme")
+	})
+
 	t.Run("partial_update_fields", func(t *testing.T) {
 		t.Parallel()
 

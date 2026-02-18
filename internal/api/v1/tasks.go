@@ -17,9 +17,9 @@ type CreateTaskInput struct {
 	Body struct {
 		ProjectID   uuid.UUID  `json:"project_id" doc:"Project ID"`
 		Title       string     `json:"title" minLength:"1" maxLength:"500" doc:"Task title"`
-		Description string     `json:"description,omitempty" doc:"Task description"`
+		Description string     `json:"description,omitempty" maxLength:"10000" doc:"Task description"`
 		ADRID       *uuid.UUID `json:"adr_id,omitempty" doc:"Optional parent ADR ID"`
-		Priority    int        `json:"priority,omitempty" doc:"Task priority (0=default)"`
+		Priority    int        `json:"priority,omitempty" minimum:"0" maximum:"100" doc:"Task priority (0=default, 100=highest)"`
 	}
 }
 

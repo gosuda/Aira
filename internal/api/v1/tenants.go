@@ -15,7 +15,7 @@ import (
 type CreateTenantInput struct {
 	Body struct {
 		Name string `json:"name" minLength:"1" maxLength:"255" doc:"Tenant name"`
-		Slug string `json:"slug" minLength:"1" maxLength:"63" doc:"URL-safe slug"`
+		Slug string `json:"slug" minLength:"1" maxLength:"63" pattern:"^[a-z0-9]+(?:-[a-z0-9]+)*$" doc:"URL-safe slug (lowercase alphanumeric with hyphens)"`
 	}
 }
 

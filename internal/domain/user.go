@@ -61,7 +61,7 @@ type UserRepository interface {
 	// OAuth links
 	CreateOAuthLink(ctx context.Context, link *UserOAuthLink) error
 	GetOAuthLink(ctx context.Context, provider, providerID string) (*UserOAuthLink, error)
-	DeleteOAuthLink(ctx context.Context, id uuid.UUID) error
+	DeleteOAuthLink(ctx context.Context, userID, id uuid.UUID) error
 
 	// Messenger links
 	CreateMessengerLink(ctx context.Context, link *UserMessengerLink) error
@@ -74,5 +74,5 @@ type UserRepository interface {
 	GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, prefix string) (*APIKey, error)
 	ListAPIKeys(ctx context.Context, tenantID, userID uuid.UUID) ([]*APIKey, error)
 	DeleteAPIKey(ctx context.Context, tenantID, id uuid.UUID) error
-	UpdateAPIKeyLastUsed(ctx context.Context, id uuid.UUID) error
+	UpdateAPIKeyLastUsed(ctx context.Context, tenantID, id uuid.UUID) error
 }

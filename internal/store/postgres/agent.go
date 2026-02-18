@@ -100,15 +100,15 @@ func (r *AgentSessionRepo) UpdateContainer(ctx context.Context, tenantID, id uui
 	return nil
 }
 
-func (r *AgentSessionRepo) SetCompleted(ctx context.Context, id uuid.UUID, errMsg string) error {
+func (r *AgentSessionRepo) SetCompleted(ctx context.Context, tenantID, id uuid.UUID, errMsg string) error {
 	status := domain.AgentStatusCompleted
 	if errMsg != "" {
 		status = domain.AgentStatusFailed
 	}
 
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE agent_sessions SET status = $1, completed_at = now(), error = $2 WHERE id = $3`,
-		status, errMsg, id,
+		`UPDATE agent_sessions SET status = $1, completed_at = now(), error = $2 WHERE tenant_id = $3 AND id = $4`,
+		status, errMsg, tenantID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("agentSessionRepo.SetCompleted: %w", err)

@@ -64,7 +64,7 @@ func (m *mockServiceRepo) GetOAuthLink(context.Context, string, string) (*domain
 	return nil, nil
 }
 
-func (m *mockServiceRepo) DeleteOAuthLink(context.Context, uuid.UUID) error { return nil }
+func (m *mockServiceRepo) DeleteOAuthLink(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (m *mockServiceRepo) CreateMessengerLink(context.Context, *domain.UserMessengerLink) error {
 	return nil
@@ -94,7 +94,9 @@ func (m *mockServiceRepo) ListAPIKeys(context.Context, uuid.UUID, uuid.UUID) ([]
 
 func (m *mockServiceRepo) DeleteAPIKey(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
-func (m *mockServiceRepo) UpdateAPIKeyLastUsed(context.Context, uuid.UUID) error { return nil }
+func (m *mockServiceRepo) UpdateAPIKeyLastUsed(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 
 // --- test constants ---
 

@@ -172,10 +172,10 @@ func (r *UserRepo) GetOAuthLink(ctx context.Context, provider, providerID string
 	return &link, nil
 }
 
-func (r *UserRepo) DeleteOAuthLink(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepo) DeleteOAuthLink(ctx context.Context, userID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
-		`DELETE FROM user_oauth_links WHERE id = $1`,
-		id,
+		`DELETE FROM user_oauth_links WHERE user_id = $1 AND id = $2`,
+		userID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("userRepo.DeleteOAuthLink: %w", err)
@@ -359,10 +359,10 @@ func (r *UserRepo) DeleteAPIKey(ctx context.Context, tenantID, id uuid.UUID) err
 	return nil
 }
 
-func (r *UserRepo) UpdateAPIKeyLastUsed(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepo) UpdateAPIKeyLastUsed(ctx context.Context, tenantID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE api_keys SET last_used_at = now() WHERE id = $1`,
-		id,
+		`UPDATE api_keys SET last_used_at = now() WHERE tenant_id = $1 AND id = $2`,
+		tenantID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("userRepo.UpdateAPIKeyLastUsed: %w", err)

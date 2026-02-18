@@ -37,7 +37,7 @@ func (m *mockLinkingRepo) CreateOAuthLink(context.Context, *domain.UserOAuthLink
 func (m *mockLinkingRepo) GetOAuthLink(context.Context, string, string) (*domain.UserOAuthLink, error) {
 	return nil, nil
 }
-func (m *mockLinkingRepo) DeleteOAuthLink(context.Context, uuid.UUID) error { return nil }
+func (m *mockLinkingRepo) DeleteOAuthLink(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (m *mockLinkingRepo) CreateMessengerLink(_ context.Context, link *domain.UserMessengerLink) error {
 	if m.createMessengerLinkErr != nil {
@@ -64,7 +64,7 @@ func (m *mockLinkingRepo) ListAPIKeys(context.Context, uuid.UUID, uuid.UUID) ([]
 	return nil, nil
 }
 func (m *mockLinkingRepo) DeleteAPIKey(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (m *mockLinkingRepo) UpdateAPIKeyLastUsed(context.Context, uuid.UUID) error {
+func (m *mockLinkingRepo) UpdateAPIKeyLastUsed(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }
 

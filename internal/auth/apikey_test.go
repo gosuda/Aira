@@ -51,7 +51,7 @@ func (m *mockUserRepo) CreateOAuthLink(context.Context, *domain.UserOAuthLink) e
 func (m *mockUserRepo) GetOAuthLink(context.Context, string, string) (*domain.UserOAuthLink, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) DeleteOAuthLink(context.Context, uuid.UUID) error { return nil }
+func (m *mockUserRepo) DeleteOAuthLink(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (m *mockUserRepo) CreateMessengerLink(context.Context, *domain.UserMessengerLink) error {
 	return nil
@@ -81,7 +81,7 @@ func (m *mockUserRepo) ListAPIKeys(context.Context, uuid.UUID, uuid.UUID) ([]*do
 	return nil, nil
 }
 func (m *mockUserRepo) DeleteAPIKey(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (m *mockUserRepo) UpdateAPIKeyLastUsed(_ context.Context, _ uuid.UUID) error {
+func (m *mockUserRepo) UpdateAPIKeyLastUsed(_ context.Context, _, _ uuid.UUID) error {
 	return m.updateLastUsedErr
 }
 
