@@ -190,6 +190,8 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	// 7. Update session status to running.
 	err = o.sessions.UpdateStatus(ctx, tenantID, session.ID, domain.AgentStatusRunning)
 	if err != nil {
+		o.cleanupBackend(session.ID)
+		o.failSession(ctx, session.ID, tenantID, "failed to update status to running: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: update session running: %w", err)
 	}
 	session.Status = domain.AgentStatusRunning
@@ -198,6 +200,8 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	if task.Status == domain.TaskStatusBacklog {
 		err = o.tasks.UpdateStatus(ctx, tenantID, taskID, domain.TaskStatusInProgress)
 		if err != nil {
+			o.cleanupBackend(session.ID)
+			o.failSession(ctx, session.ID, tenantID, "failed to update task status: "+err.Error())
 			return nil, fmt.Errorf("agent.Orchestrator.StartTask: update task status: %w", err)
 		}
 	}
