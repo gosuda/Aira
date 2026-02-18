@@ -82,6 +82,13 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 // Subscribes to Redis channel "agent:<sessionID>".
 // Streams agent output lines to connected clients.
 func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "missing tenant", http.StatusForbidden)
+		return
+	}
+	_ = tenantID // TODO: verify session belongs to tenant via DB lookup
+
 	sessionIDStr := chi.URLParam(r, "sessionID")
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {

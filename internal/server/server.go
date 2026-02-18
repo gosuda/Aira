@@ -53,7 +53,7 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 	router.Use(chimw.Logger)
 	router.Use(chimw.Recoverer)
 	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   cfg.Server.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-API-Key", "X-Request-ID"},
 		ExposedHeaders:   []string{"X-Request-ID"},

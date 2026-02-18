@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/agent"
 )
@@ -153,13 +154,19 @@ func (b *ClaudeBackend) Dispose(ctx context.Context) error {
 		sess.cancel()
 
 		err := b.runtime.StopContainer(ctx, sess.containerID)
-		if err != nil && firstErr == nil {
-			firstErr = err
+		if err != nil {
+			log.Error().Err(err).Str("session_id", sid.String()).Str("container_id", sess.containerID).Msg("agent.ClaudeBackend.Dispose: failed to stop container")
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 
 		err = b.runtime.RemoveContainer(ctx, sess.containerID)
-		if err != nil && firstErr == nil {
-			firstErr = err
+		if err != nil {
+			log.Error().Err(err).Str("session_id", sid.String()).Str("container_id", sess.containerID).Msg("agent.ClaudeBackend.Dispose: failed to remove container")
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 
 		b.mu.Lock()

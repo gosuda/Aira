@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/domain"
 )
@@ -40,6 +41,8 @@ type Orchestrator struct {
 	// backends tracks active backends by session ID for HITL and cancellation.
 	backends map[SessionID]AgentBackend
 	mu       sync.RWMutex
+
+	done chan struct{}
 }
 
 func NewOrchestrator(
@@ -62,7 +65,13 @@ func NewOrchestrator(
 		adrs:     adrs,
 		pubsub:   pubsub,
 		backends: make(map[SessionID]AgentBackend),
+		done:     make(chan struct{}),
 	}
+}
+
+// Shutdown signals all background goroutines to stop.
+func (o *Orchestrator) Shutdown() {
+	close(o.done)
 }
 
 // StartTask picks up a task, creates an agent session, prepares the repo volume,
@@ -100,7 +109,7 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	// 3. Get project -> ensure volume -> git fetch -> create branch.
 	project, err := o.projects.GetByID(ctx, tenantID, task.ProjectID)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to get project: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to get project: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: get project: %w", err)
 	}
 
@@ -108,19 +117,19 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 
 	err = o.volumes.EnsureVolume(ctx, volumeName)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to ensure volume: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to ensure volume: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: ensure volume: %w", err)
 	}
 
 	err = o.volumes.CloneRepo(ctx, volumeName, project.RepoURL)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to clone repo: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to clone repo: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: clone repo: %w", err)
 	}
 
 	err = o.volumes.FetchRepo(ctx, volumeName)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to fetch repo: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to fetch repo: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: fetch repo: %w", err)
 	}
 
@@ -131,14 +140,14 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 
 	err = o.volumes.CreateBranch(ctx, volumeName, session.BranchName, "origin/"+baseBranch)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to create branch: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to create branch: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: create branch: %w", err)
 	}
 
 	// 4. Create backend via registry.
 	backend, err := o.registry.Create(agentType, o.runtime)
 	if err != nil {
-		o.failSession(ctx, session.ID, "failed to create backend: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to create backend: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: %w", err)
 	}
 
@@ -163,7 +172,7 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	})
 	if err != nil {
 		_ = backend.Dispose(ctx)
-		o.failSession(ctx, session.ID, "failed to start session: "+err.Error())
+		o.failSession(ctx, session.ID, tenantID, "failed to start session: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: start session: %w", err)
 	}
 
@@ -263,15 +272,21 @@ func (o *Orchestrator) CancelSession(ctx context.Context, tenantID, sessionID uu
 // completeSession handles agent completion (called when container exits).
 func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID uuid.UUID, exitErr string) {
 	if exitErr == "" {
-		_ = o.sessions.SetCompleted(ctx, sessionID, "")
+		if err := o.sessions.SetCompleted(ctx, sessionID, ""); err != nil {
+			log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.completeSession: failed to set completed")
+		}
 
 		// Try to transition task to review.
 		session, err := o.sessions.GetByID(ctx, tenantID, sessionID)
 		if err == nil && session.TaskID != nil {
-			_ = o.tasks.UpdateStatus(ctx, tenantID, *session.TaskID, domain.TaskStatusReview)
+			if statusErr := o.tasks.UpdateStatus(ctx, tenantID, *session.TaskID, domain.TaskStatusReview); statusErr != nil {
+				log.Error().Err(statusErr).Str("task_id", session.TaskID.String()).Msg("agent.completeSession: failed to update task status")
+			}
 		}
 	} else {
-		_ = o.sessions.SetCompleted(ctx, sessionID, exitErr)
+		if err := o.sessions.SetCompleted(ctx, sessionID, exitErr); err != nil {
+			log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.completeSession: failed to set completed with error")
+		}
 	}
 
 	o.cleanupBackend(sessionID)
@@ -286,7 +301,9 @@ func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID 
 	payload, err := json.Marshal(evt)
 	if err == nil {
 		channel := "agent:" + sessionID.String()
-		_ = o.pubsub.Publish(ctx, channel, payload)
+		if pubErr := o.pubsub.Publish(ctx, channel, payload); pubErr != nil {
+			log.Error().Err(pubErr).Str("channel", channel).Msg("agent.completeSession: failed to publish completion event")
+		}
 	}
 }
 
@@ -302,7 +319,9 @@ func (o *Orchestrator) handleMessage(sessionID, tenantID uuid.UUID, msg Message)
 	channel := "agent:" + sessionID.String()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_ = o.pubsub.Publish(ctx, channel, payload)
+	if pubErr := o.pubsub.Publish(ctx, channel, payload); pubErr != nil {
+		log.Error().Err(pubErr).Str("channel", channel).Msg("agent.handleMessage: failed to publish message")
+	}
 }
 
 // waitForCompletion waits for the agent backend to finish (container exit)
@@ -318,10 +337,19 @@ func (o *Orchestrator) waitForCompletion(sessionID, tenantID uuid.UUID) {
 		return
 	}
 
-	// Poll until backend is gone (session cleaned up) or context signals.
+	// Poll until backend is gone (session cleaned up) or shutdown signals.
 	// The backend's streamOutput goroutine will end when the container exits.
 	// We detect completion by waiting for the container.
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-o.done:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 
 	// Look up container ID from the session DB record.
 	// We need a short delay to let UpdateContainer propagate.
@@ -391,8 +419,11 @@ func (o *Orchestrator) pollCompletion(ctx context.Context, sessionID, tenantID u
 	}
 }
 
-func (o *Orchestrator) failSession(ctx context.Context, sessionID uuid.UUID, errMsg string) {
-	_ = o.sessions.SetCompleted(ctx, sessionID, errMsg)
+func (o *Orchestrator) failSession(ctx context.Context, sessionID, tenantID uuid.UUID, errMsg string) {
+	if err := o.sessions.SetCompleted(ctx, sessionID, errMsg); err != nil {
+		log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.failSession: failed to set session failed")
+	}
+	o.cleanupWorktree(ctx, sessionID, tenantID)
 }
 
 func (o *Orchestrator) cleanupBackend(sessionID uuid.UUID) {
@@ -406,7 +437,9 @@ func (o *Orchestrator) cleanupBackend(sessionID uuid.UUID) {
 	if ok {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_ = backend.Dispose(ctx)
+		if disposeErr := backend.Dispose(ctx); disposeErr != nil {
+			log.Error().Err(disposeErr).Str("session_id", sessionID.String()).Msg("agent.cleanupBackend: failed to dispose backend")
+		}
 	}
 }
 
@@ -418,7 +451,9 @@ func (o *Orchestrator) cleanupWorktree(ctx context.Context, sessionID, tenantID 
 	}
 
 	volumeName := "aira-repo-" + session.ProjectID.String()
-	_ = o.volumes.RemoveWorktree(ctx, volumeName, session.BranchName)
+	if rmErr := o.volumes.RemoveWorktree(ctx, volumeName, session.BranchName); rmErr != nil {
+		log.Error().Err(rmErr).Str("volume", volumeName).Str("branch", session.BranchName).Msg("agent.cleanupWorktree: failed to remove worktree")
+	}
 }
 
 func buildPrompt(task *domain.Task) string {

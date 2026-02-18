@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Config holds all application configuration loaded from environment variables.
@@ -49,6 +52,7 @@ type ServerConfig struct {
 	Addr         string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	CORSOrigins  []string
 }
 
 // SlackConfig holds Slack integration settings.
@@ -110,6 +114,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config.Load: %w", err)
 	}
 
+	corsOrigins := getEnvList("AIRA_CORS_ORIGINS", []string{"http://localhost:5173"})
+
 	cfg := &Config{
 		Database: DatabaseConfig{
 			Host:     getEnv("AIRA_DB_HOST", "localhost"),
@@ -134,6 +140,7 @@ func Load() (*Config, error) {
 			Addr:         getEnv("AIRA_SERVER_ADDR", ":8080"),
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
+			CORSOrigins:  corsOrigins,
 		},
 		Slack: SlackConfig{
 			BotToken:      getEnv("AIRA_SLACK_BOT_TOKEN", ""),
@@ -162,6 +169,14 @@ func (c *Config) validate() error {
 	// JWT secret is required (no insecure default).
 	if c.JWT.Secret == "" {
 		return errors.New("AIRA_JWT_SECRET is required")
+	}
+	if len(c.JWT.Secret) < 32 {
+		return errors.New("AIRA_JWT_SECRET must be at least 32 characters")
+	}
+
+	// DB SSL mode warning for non-self-hosted deployments.
+	if c.Database.SSLMode == "disable" && !c.SelfHosted {
+		log.Warn().Msg("AIRA_DB_SSLMODE=disable is insecure for production; set to 'require' or 'verify-full'")
 	}
 
 	// Bounds checks.
@@ -236,4 +251,20 @@ func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("parsing %s=%q as duration: %w", key, v, err)
 	}
 	return d, nil
+}
+
+func getEnvList(key string, fallback []string) []string {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	parts := strings.Split(v, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

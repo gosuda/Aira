@@ -209,7 +209,7 @@ func TestLoad_InvalidEnvVars(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Always set JWT secret so failures are from the var under test.
-			t.Setenv("AIRA_JWT_SECRET", "test-secret-for-error-cases")
+			t.Setenv("AIRA_JWT_SECRET", "test-secret-for-error-cases-32ch!")
 			t.Setenv(tc.envKey, tc.envVal)
 
 			cfg, err := Load()
@@ -233,7 +233,7 @@ func TestLoad_BoundaryValues(t *testing.T) {
 		{
 			name: "port min boundary 1",
 			envs: map[string]string{
-				"AIRA_JWT_SECRET": "secret",
+				"AIRA_JWT_SECRET": "test-secret-that-is-at-least-32ch",
 				"AIRA_DB_PORT":    "1",
 			},
 			assertFn: func(t *testing.T, cfg *Config) {
@@ -244,7 +244,7 @@ func TestLoad_BoundaryValues(t *testing.T) {
 		{
 			name: "port max boundary 65535",
 			envs: map[string]string{
-				"AIRA_JWT_SECRET": "secret",
+				"AIRA_JWT_SECRET": "test-secret-that-is-at-least-32ch",
 				"AIRA_DB_PORT":    "65535",
 			},
 			assertFn: func(t *testing.T, cfg *Config) {
@@ -255,7 +255,7 @@ func TestLoad_BoundaryValues(t *testing.T) {
 		{
 			name: "MaxConns min boundary 1",
 			envs: map[string]string{
-				"AIRA_JWT_SECRET":   "secret",
+				"AIRA_JWT_SECRET":   "test-secret-that-is-at-least-32ch",
 				"AIRA_DB_MAX_CONNS": "1",
 			},
 			assertFn: func(t *testing.T, cfg *Config) {
@@ -266,7 +266,7 @@ func TestLoad_BoundaryValues(t *testing.T) {
 		{
 			name: "duration 1ns is valid",
 			envs: map[string]string{
-				"AIRA_JWT_SECRET":           "secret",
+				"AIRA_JWT_SECRET":           "test-secret-that-is-at-least-32ch",
 				"AIRA_JWT_ACCESS_TTL":       "1ns",
 				"AIRA_JWT_REFRESH_TTL":      "1ns",
 				"AIRA_SERVER_READ_TIMEOUT":  "1ns",
@@ -302,7 +302,7 @@ func TestLoad_BoundaryValues(t *testing.T) {
 
 func TestLoad_Defaults(t *testing.T) {
 	// Only the required JWT secret is set; everything else uses defaults.
-	t.Setenv("AIRA_JWT_SECRET", "my-dev-secret")
+	t.Setenv("AIRA_JWT_SECRET", "my-dev-secret-at-least-32-chars!!")
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -323,7 +323,7 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, 0, cfg.Redis.DB)
 
 	// JWT defaults.
-	assert.Equal(t, "my-dev-secret", cfg.JWT.Secret)
+	assert.Equal(t, "my-dev-secret-at-least-32-chars!!", cfg.JWT.Secret)
 	assert.Equal(t, 15*time.Minute, cfg.JWT.AccessTTL)
 	assert.Equal(t, 7*24*time.Hour, cfg.JWT.RefreshTTL)
 
@@ -362,7 +362,7 @@ func TestLoad_AllCustomValues(t *testing.T) {
 		"AIRA_REDIS_PASSWORD": "redis-pass",
 		"AIRA_REDIS_DB":       "3",
 		// JWT
-		"AIRA_JWT_SECRET":      "prod-jwt-secret-256-bits-long!!",
+		"AIRA_JWT_SECRET":      "prod-jwt-secret-256-bits-long!!!",
 		"AIRA_JWT_ACCESS_TTL":  "30m",
 		"AIRA_JWT_REFRESH_TTL": "72h",
 		// Server
@@ -405,7 +405,7 @@ func TestLoad_AllCustomValues(t *testing.T) {
 	assert.Equal(t, 3, cfg.Redis.DB)
 
 	// JWT
-	assert.Equal(t, "prod-jwt-secret-256-bits-long!!", cfg.JWT.Secret)
+	assert.Equal(t, "prod-jwt-secret-256-bits-long!!!", cfg.JWT.Secret)
 	assert.Equal(t, 30*time.Minute, cfg.JWT.AccessTTL)
 	assert.Equal(t, 72*time.Hour, cfg.JWT.RefreshTTL)
 
@@ -480,7 +480,7 @@ func TestDatabaseConfig_DSN(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestLoad_DSN_Integration(t *testing.T) {
-	t.Setenv("AIRA_JWT_SECRET", "secret")
+	t.Setenv("AIRA_JWT_SECRET", "test-secret-that-is-at-least-32ch")
 	t.Setenv("AIRA_DB_HOST", "myhost")
 	t.Setenv("AIRA_DB_PORT", "5433")
 	t.Setenv("AIRA_DB_USER", "myuser")
@@ -507,7 +507,7 @@ func TestValidate(t *testing.T) {
 		return &Config{
 			Database: DatabaseConfig{Port: 5432, MaxConns: 25},
 			JWT: JWTConfig{
-				Secret:     "secret",
+				Secret:     "test-secret-that-is-at-least-32ch",
 				AccessTTL:  15 * time.Minute,
 				RefreshTTL: 7 * 24 * time.Hour,
 			},
@@ -528,6 +528,20 @@ func TestValidate(t *testing.T) {
 		c := validBase()
 		c.JWT.Secret = ""
 		assert.ErrorContains(t, c.validate(), "AIRA_JWT_SECRET")
+	})
+
+	t.Run("JWT secret too short fails", func(t *testing.T) {
+		t.Parallel()
+		c := validBase()
+		c.JWT.Secret = "only-31-characters-long-secret!"
+		assert.ErrorContains(t, c.validate(), "AIRA_JWT_SECRET")
+	})
+
+	t.Run("JWT secret exactly 32 chars passes", func(t *testing.T) {
+		t.Parallel()
+		c := validBase()
+		c.JWT.Secret = "exactly-32-characters-long-sec!!"
+		assert.NoError(t, c.validate())
 	})
 
 	t.Run("port 0 fails", func(t *testing.T) {

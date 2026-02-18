@@ -140,6 +140,8 @@ func (vm *VolumeManager) runGitContainer(ctx context.Context, volumeName string,
 
 	err = vm.client.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if err != nil {
+		// Clean up the created container since AutoRemove only applies to running containers.
+		_ = vm.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
 		return -1, fmt.Errorf("start git container: %w", err)
 	}
 
