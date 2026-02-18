@@ -72,7 +72,7 @@ func (b *ClaudeBackend) StartSession(ctx context.Context, opts agent.SessionOpti
 		return uuid.Nil, fmt.Errorf("agent.ClaudeBackend.StartSession: %w", err)
 	}
 
-	sessionCtx, cancel := context.WithCancel(ctx)
+	sessionCtx, cancel := context.WithCancel(context.Background())
 
 	b.mu.Lock()
 	b.sessions[sessionID] = &claudeSession{

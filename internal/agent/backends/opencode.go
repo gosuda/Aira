@@ -72,7 +72,7 @@ func (b *OpenCodeBackend) StartSession(ctx context.Context, opts agent.SessionOp
 		return uuid.Nil, fmt.Errorf("agent.OpenCodeBackend.StartSession: %w", err)
 	}
 
-	sessionCtx, cancel := context.WithCancel(ctx)
+	sessionCtx, cancel := context.WithCancel(context.Background())
 
 	b.mu.Lock()
 	b.sessions[sessionID] = &opencodeSession{

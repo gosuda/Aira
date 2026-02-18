@@ -81,7 +81,7 @@ func (b *ACPBackend) StartSession(ctx context.Context, opts agent.SessionOptions
 		return uuid.Nil, fmt.Errorf("agent.ACPBackend.StartSession: %w", err)
 	}
 
-	sessionCtx, cancel := context.WithCancel(ctx)
+	sessionCtx, cancel := context.WithCancel(context.Background())
 
 	b.mu.Lock()
 	b.sessions[sessionID] = &acpSession{

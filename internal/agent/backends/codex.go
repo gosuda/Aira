@@ -72,7 +72,7 @@ func (b *CodexBackend) StartSession(ctx context.Context, opts agent.SessionOptio
 		return uuid.Nil, fmt.Errorf("agent.CodexBackend.StartSession: %w", err)
 	}
 
-	sessionCtx, cancel := context.WithCancel(ctx)
+	sessionCtx, cancel := context.WithCancel(context.Background())
 
 	b.mu.Lock()
 	b.sessions[sessionID] = &codexSession{
