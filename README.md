@@ -2,7 +2,7 @@
 
 **The open-source, agent-native engineering platform — the true AI-native evolution of Jira.**
 
-One command from Slack, Discord, Telegram or any chat app and AI agents read your codebase, edit code, add features, run tests and deploy to production.  
+One command from Slack, Discord, Telegram or any chat app and AI agents read your codebase, edit code, add features, run tests and deploy to production.
 Humans stay in the loop — faster, easier and more effective than ever with **live push notifications**.
 
 ---
