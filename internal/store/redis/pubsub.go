@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 type PubSub struct {
@@ -20,7 +21,9 @@ func New(ctx context.Context, addr, password string, db int) (*PubSub, error) {
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		_ = client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("redis.New: close after ping failure")
+		}
 		return nil, fmt.Errorf("redis.New: ping: %w", err)
 	}
 
@@ -47,7 +50,9 @@ func (ps *PubSub) Subscribe(ctx context.Context, channel string) (messages <-cha
 	// Wait for subscription confirmation.
 	_, err = sub.Receive(ctx)
 	if err != nil {
-		_ = sub.Close()
+		if closeErr := sub.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("redis.PubSub.Subscribe: close after receive failure")
+		}
 		return nil, nil, fmt.Errorf("redis.PubSub.Subscribe: receive confirmation: %w", err)
 	}
 
@@ -74,7 +79,9 @@ func (ps *PubSub) Subscribe(ctx context.Context, channel string) (messages <-cha
 	}()
 
 	cleanup = func() {
-		_ = sub.Close()
+		if closeErr := sub.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("redis.PubSub.Subscribe: cleanup close")
+		}
 	}
 
 	return out, cleanup, nil

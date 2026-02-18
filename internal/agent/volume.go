@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -141,7 +142,9 @@ func (vm *VolumeManager) runGitContainer(ctx context.Context, volumeName string,
 	err = vm.client.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if err != nil {
 		// Clean up the created container since AutoRemove only applies to running containers.
-		_ = vm.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		if removeErr := vm.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}); removeErr != nil {
+			log.Error().Err(removeErr).Str("container_id", resp.ID).Msg("agent.VolumeManager: failed to remove container after start failure")
+		}
 		return -1, fmt.Errorf("start git container: %w", err)
 	}
 

@@ -57,7 +57,9 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
 		log.Error().Err(err).Msg("websocket subscribe")
-		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
+		if closeErr := conn.Close(websocket.StatusInternalError, "subscribe failed"); closeErr != nil {
+			log.Debug().Err(closeErr).Msg("websocket close after subscribe failure")
+		}
 		return
 	}
 	defer cleanup()
@@ -118,7 +120,9 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
 		log.Error().Err(err).Msg("websocket subscribe")
-		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
+		if closeErr := conn.Close(websocket.StatusInternalError, "subscribe failed"); closeErr != nil {
+			log.Debug().Err(closeErr).Msg("websocket close after subscribe failure")
+		}
 		return
 	}
 	defer cleanup()
