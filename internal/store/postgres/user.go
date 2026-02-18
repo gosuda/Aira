@@ -248,10 +248,10 @@ func (r *UserRepo) ListMessengerLinks(ctx context.Context, userID uuid.UUID) ([]
 	return links, nil
 }
 
-func (r *UserRepo) DeleteMessengerLink(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepo) DeleteMessengerLink(ctx context.Context, tenantID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
-		`DELETE FROM user_messenger_links WHERE id = $1`,
-		id,
+		`DELETE FROM user_messenger_links WHERE tenant_id = $1 AND id = $2`,
+		tenantID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("userRepo.DeleteMessengerLink: %w", err)
@@ -344,10 +344,10 @@ func (r *UserRepo) ListAPIKeys(ctx context.Context, tenantID, userID uuid.UUID) 
 	return keys, nil
 }
 
-func (r *UserRepo) DeleteAPIKey(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepo) DeleteAPIKey(ctx context.Context, tenantID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
-		`DELETE FROM api_keys WHERE id = $1`,
-		id,
+		`DELETE FROM api_keys WHERE tenant_id = $1 AND id = $2`,
+		tenantID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("userRepo.DeleteAPIKey: %w", err)

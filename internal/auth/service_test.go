@@ -78,7 +78,9 @@ func (m *mockServiceRepo) ListMessengerLinks(context.Context, uuid.UUID) ([]*dom
 	return nil, nil
 }
 
-func (m *mockServiceRepo) DeleteMessengerLink(context.Context, uuid.UUID) error { return nil }
+func (m *mockServiceRepo) DeleteMessengerLink(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 
 func (m *mockServiceRepo) CreateAPIKey(context.Context, *domain.APIKey) error { return nil }
 
@@ -90,7 +92,7 @@ func (m *mockServiceRepo) ListAPIKeys(context.Context, uuid.UUID, uuid.UUID) ([]
 	return nil, nil
 }
 
-func (m *mockServiceRepo) DeleteAPIKey(context.Context, uuid.UUID) error { return nil }
+func (m *mockServiceRepo) DeleteAPIKey(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (m *mockServiceRepo) UpdateAPIKeyLastUsed(context.Context, uuid.UUID) error { return nil }
 

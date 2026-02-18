@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/domain"
 )
@@ -107,8 +108,10 @@ func authenticateAPIKey(ctx context.Context, rawKey string, userRepo domain.User
 		return ctx, false
 	}
 
-	// Update last used (fire and forget).
-	_ = userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID)
+	// Update last used timestamp (fire and forget).
+	if updateErr := userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID); updateErr != nil {
+		log.Warn().Err(updateErr).Str("api_key_id", apiKey.ID.String()).Msg("auth: failed to update api key last_used_at")
+	}
 
 	ctx = context.WithValue(ctx, ContextKeyTenantID, apiKey.TenantID)
 	ctx = context.WithValue(ctx, ContextKeyUserID, apiKey.UserID)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -70,6 +71,10 @@ func RegisterProjectRoutes(api huma.API, store *postgres.Store) {
 		tenantID, ok := middleware.TenantIDFromContext(ctx)
 		if !ok {
 			return nil, huma.Error403Forbidden("missing tenant context")
+		}
+
+		if !strings.HasPrefix(input.Body.RepoURL, "https://") && !strings.HasPrefix(input.Body.RepoURL, "git@") {
+			return nil, huma.Error400BadRequest("repo_url must use https:// or git@ scheme")
 		}
 
 		p := &domain.Project{

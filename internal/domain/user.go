@@ -24,8 +24,8 @@ type UserOAuthLink struct {
 	UserID       uuid.UUID
 	Provider     string // "google", "github", "slack", "discord"
 	ProviderID   string
-	AccessToken  string // encrypted //nolint:gosec // G117: OAuth token storage
-	RefreshToken string // encrypted //nolint:gosec // G117: OAuth token storage
+	AccessToken  string //nolint:gosec // G117: encrypted OAuth token storage
+	RefreshToken string //nolint:gosec // G117: encrypted OAuth token storage
 	CreatedAt    time.Time
 }
 
@@ -67,12 +67,12 @@ type UserRepository interface {
 	CreateMessengerLink(ctx context.Context, link *UserMessengerLink) error
 	GetMessengerLink(ctx context.Context, tenantID uuid.UUID, platform, externalID string) (*UserMessengerLink, error)
 	ListMessengerLinks(ctx context.Context, userID uuid.UUID) ([]*UserMessengerLink, error)
-	DeleteMessengerLink(ctx context.Context, id uuid.UUID) error
+	DeleteMessengerLink(ctx context.Context, tenantID, id uuid.UUID) error
 
 	// API keys
 	CreateAPIKey(ctx context.Context, key *APIKey) error
 	GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, prefix string) (*APIKey, error)
 	ListAPIKeys(ctx context.Context, tenantID, userID uuid.UUID) ([]*APIKey, error)
-	DeleteAPIKey(ctx context.Context, id uuid.UUID) error
+	DeleteAPIKey(ctx context.Context, tenantID, id uuid.UUID) error
 	UpdateAPIKeyLastUsed(ctx context.Context, id uuid.UUID) error
 }

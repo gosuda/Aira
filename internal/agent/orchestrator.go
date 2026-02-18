@@ -171,7 +171,9 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 		AgentType:   agentType,
 	})
 	if err != nil {
-		_ = backend.Dispose(ctx)
+		if disposeErr := backend.Dispose(ctx); disposeErr != nil {
+			log.Error().Err(disposeErr).Str("session_id", session.ID.String()).Msg("agent.StartTask: failed to dispose backend after start failure")
+		}
 		o.failSession(ctx, session.ID, tenantID, "failed to start session: "+err.Error())
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: start session: %w", err)
 	}
@@ -311,6 +313,13 @@ func (o *Orchestrator) completeSession(ctx context.Context, sessionID, tenantID 
 func (o *Orchestrator) handleMessage(sessionID, tenantID uuid.UUID, msg Message) {
 	_ = tenantID // reserved for tenant-scoped routing
 
+	// Skip publish if shutting down.
+	select {
+	case <-o.done:
+		return
+	default:
+	}
+
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return
@@ -351,17 +360,27 @@ func (o *Orchestrator) waitForCompletion(sessionID, tenantID uuid.UUID) {
 		}
 	}()
 
-	// Look up container ID from the session DB record.
-	// We need a short delay to let UpdateContainer propagate.
-	time.Sleep(500 * time.Millisecond)
+	// Wait for container ID to be set in DB, with bounded retries.
+	var session *domain.AgentSession
+	for attempt := range 10 {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Duration(100+attempt*100) * time.Millisecond):
+		}
 
-	session, err := o.sessions.GetByID(ctx, tenantID, sessionID)
-	if err != nil {
-		o.completeSession(ctx, sessionID, tenantID, "failed to get session for wait: "+err.Error())
-		return
+		var err error
+		session, err = o.sessions.GetByID(ctx, tenantID, sessionID)
+		if err != nil {
+			o.completeSession(ctx, sessionID, tenantID, "failed to get session for wait: "+err.Error())
+			return
+		}
+		if session.ContainerID != "" {
+			break
+		}
 	}
 
-	if session.ContainerID == "" {
+	if session == nil || session.ContainerID == "" {
 		// Container ID not yet set; the backend manages its own container.
 		// We need an alternative: wait for the backend's container via direct tracking.
 		// For now, we do a lightweight poll.

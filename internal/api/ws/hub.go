@@ -11,18 +11,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
 	redisstore "github.com/gosuda/aira/internal/store/redis"
 )
 
 // Hub manages WebSocket connections backed by Redis pub/sub.
 type Hub struct {
-	pubsub *redisstore.PubSub
+	pubsub        *redisstore.PubSub
+	agentSessions domain.AgentSessionRepository
 }
 
 // NewHub creates a new WebSocket hub.
-func NewHub(pubsub *redisstore.PubSub) *Hub {
-	return &Hub{pubsub: pubsub}
+func NewHub(pubsub *redisstore.PubSub, agentSessions domain.AgentSessionRepository) *Hub {
+	return &Hub{pubsub: pubsub, agentSessions: agentSessions}
 }
 
 // ServeBoard handles WebSocket connections for kanban board updates.
@@ -87,13 +89,18 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing tenant", http.StatusForbidden)
 		return
 	}
-	_ = tenantID // TODO: verify session belongs to tenant via DB lookup
-
 	sessionIDStr := chi.URLParam(r, "sessionID")
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
 		http.Error(w, "invalid session id", http.StatusBadRequest)
 		return
+	}
+
+	if h.agentSessions != nil {
+		if _, lookupErr := h.agentSessions.GetByID(r.Context(), tenantID, sessionID); lookupErr != nil {
+			http.Error(w, "session not found", http.StatusForbidden)
+			return
+		}
 	}
 
 	conn, err := websocket.Accept(w, r, nil)

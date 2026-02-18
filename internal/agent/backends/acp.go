@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/agent"
 )
@@ -95,7 +96,9 @@ func (b *ACPBackend) StartSession(ctx context.Context, opts agent.SessionOptions
 		b.mu.Lock()
 		delete(b.sessions, sessionID)
 		b.mu.Unlock()
-		_ = b.runtime.RemoveContainer(ctx, containerID)
+		if rmErr := b.runtime.RemoveContainer(ctx, containerID); rmErr != nil {
+			log.Error().Err(rmErr).Str("container_id", containerID).Msg("agent.ACPBackend: failed to remove container after start failure")
+		}
 		return uuid.Nil, fmt.Errorf("agent.ACPBackend.StartSession: %w", err)
 	}
 

@@ -88,6 +88,22 @@ func RegisterTaskRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
+		if _, err := store.Projects().GetByID(ctx, tenantID, input.Body.ProjectID); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return nil, huma.Error404NotFound("project not found")
+			}
+			return nil, huma.Error500InternalServerError("failed to validate project")
+		}
+
+		if input.Body.ADRID != nil {
+			if _, err := store.ADRs().GetByID(ctx, tenantID, *input.Body.ADRID); err != nil {
+				if errors.Is(err, domain.ErrNotFound) {
+					return nil, huma.Error404NotFound("ADR not found")
+				}
+				return nil, huma.Error500InternalServerError("failed to validate ADR")
+			}
+		}
+
 		now := time.Now()
 		t := &domain.Task{
 			ID:          uuid.New(),
@@ -227,6 +243,12 @@ func RegisterTaskRoutes(api huma.API, store *postgres.Store) {
 		}
 
 		target := domain.TaskStatus(input.Body.Status)
+		switch target {
+		case domain.TaskStatusBacklog, domain.TaskStatusInProgress, domain.TaskStatusReview, domain.TaskStatusDone:
+			// valid
+		default:
+			return nil, huma.Error400BadRequest("unknown task status: " + input.Body.Status)
+		}
 		if !existing.Status.ValidTransition(target) {
 			return nil, huma.Error400BadRequest("invalid status transition from " + string(existing.Status) + " to " + string(target))
 		}

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ type tenantLimiter struct {
 
 // RateLimit applies per-tenant rate limiting. Stale limiter entries are cleaned
 // up every 10 minutes to prevent unbounded memory growth.
-func RateLimit(requestsPerSecond float64, burst int) func(http.Handler) http.Handler {
+func RateLimit(ctx context.Context, requestsPerSecond float64, burst int) func(http.Handler) http.Handler {
 	var (
 		mu       sync.Mutex
 		limiters = make(map[uuid.UUID]*tenantLimiter)
@@ -26,15 +27,20 @@ func RateLimit(requestsPerSecond float64, burst int) func(http.Handler) http.Han
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			mu.Lock()
-			cutoff := time.Now().Add(-30 * time.Minute)
-			for id, tl := range limiters {
-				if tl.lastAccess.Before(cutoff) {
-					delete(limiters, id)
+		for {
+			select {
+			case <-ticker.C:
+				mu.Lock()
+				cutoff := time.Now().Add(-30 * time.Minute)
+				for id, tl := range limiters {
+					if tl.lastAccess.Before(cutoff) {
+						delete(limiters, id)
+					}
 				}
+				mu.Unlock()
+			case <-ctx.Done():
+				return
 			}
-			mu.Unlock()
 		}
 	}()
 

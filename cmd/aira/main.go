@@ -114,12 +114,12 @@ func run() error {
 		return fmt.Errorf("web assets: %w", err)
 	}
 
-	// Create HTTP server with all routes wired.
-	srv := server.New(cfg, store, pubsub, authSvc, orchestrator, webAssets)
-
 	// Graceful shutdown on SIGINT / SIGTERM.
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	// Create HTTP server with all routes wired.
+	srv := server.New(ctx, cfg, store, pubsub, authSvc, orchestrator, webAssets)
 
 	// Start server in background goroutine.
 	go func() {

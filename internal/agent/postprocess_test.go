@@ -67,7 +67,7 @@ func (m *mockAgentSessionRepo) GetByID(context.Context, uuid.UUID, uuid.UUID) (*
 func (m *mockAgentSessionRepo) UpdateStatus(context.Context, uuid.UUID, uuid.UUID, domain.AgentSessionStatus) error {
 	return nil
 }
-func (m *mockAgentSessionRepo) UpdateContainer(context.Context, uuid.UUID, string, string) error {
+func (m *mockAgentSessionRepo) UpdateContainer(context.Context, uuid.UUID, uuid.UUID, string, string) error {
 	return nil
 }
 func (m *mockAgentSessionRepo) SetCompleted(context.Context, uuid.UUID, string) error { return nil }

@@ -122,6 +122,12 @@ func RegisterADRRoutes(api huma.API, store *postgres.Store) {
 		}
 
 		target := domain.ADRStatus(input.Body.Status)
+		switch target {
+		case domain.ADRStatusDraft, domain.ADRStatusProposed, domain.ADRStatusAccepted, domain.ADRStatusRejected, domain.ADRStatusDeprecated:
+			// valid
+		default:
+			return nil, huma.Error400BadRequest("unknown ADR status: " + input.Body.Status)
+		}
 		if !isValidADRTransition(existing.Status, target) {
 			return nil, huma.Error400BadRequest("invalid status transition from " + string(existing.Status) + " to " + string(target))
 		}

@@ -44,7 +44,7 @@ type Server struct {
 // New creates a Server with all routes wired.
 // webAssets may be nil; when provided, the SvelteKit SPA is served on all
 // unmatched routes (embedded via go:embed for single-binary distribution).
-func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator, webAssets fs.FS) *Server {
+func New(ctx context.Context, cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, authSvc *auth.Service, orchestrator *agent.Orchestrator, webAssets fs.FS) *Server {
 	router := chi.NewRouter()
 
 	// Global middleware stack.
@@ -61,7 +61,7 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		MaxAge:           300,
 	}).Handler)
 
-	hub := ws.NewHub(pubsub)
+	hub := ws.NewHub(pubsub, store.AgentSessions())
 
 	s := &Server{
 		router:       router,
@@ -97,7 +97,7 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(cfg.JWT.Secret, store.Users()))
 			r.Use(middleware.RequireTenant())
-			r.Use(middleware.RateLimit(100, 200))
+			r.Use(middleware.RateLimit(ctx, 100, 200))
 
 			apiConfig := huma.DefaultConfig("Aira API", "1.0.0")
 			apiConfig.Servers = []*huma.Server{

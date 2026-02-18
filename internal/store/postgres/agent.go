@@ -85,10 +85,10 @@ func (r *AgentSessionRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.U
 	return nil
 }
 
-func (r *AgentSessionRepo) UpdateContainer(ctx context.Context, id uuid.UUID, containerID, branchName string) error {
+func (r *AgentSessionRepo) UpdateContainer(ctx context.Context, tenantID, id uuid.UUID, containerID, branchName string) error {
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE agent_sessions SET container_id = $1, branch_name = $2 WHERE id = $3`,
-		containerID, branchName, id,
+		`UPDATE agent_sessions SET container_id = $1, branch_name = $2 WHERE tenant_id = $3 AND id = $4`,
+		containerID, branchName, tenantID, id,
 	)
 	if err != nil {
 		return fmt.Errorf("agentSessionRepo.UpdateContainer: %w", err)

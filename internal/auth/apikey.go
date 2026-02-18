@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/domain"
 )
@@ -90,7 +91,9 @@ func (s *Service) ValidateAPIKey(ctx context.Context, rawKey string) (*domain.Us
 	}
 
 	// Update last used timestamp (fire and forget).
-	_ = s.userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID)
+	if updateErr := s.userRepo.UpdateAPIKeyLastUsed(ctx, apiKey.ID); updateErr != nil {
+		log.Warn().Err(updateErr).Str("api_key_id", apiKey.ID.String()).Msg("auth.ValidateAPIKey: failed to update last_used_at")
+	}
 
 	return user, apiKey, nil
 }

@@ -72,7 +72,7 @@ func (m *mockUserRepo) GetMessengerLink(_ context.Context, _ uuid.UUID, _, _ str
 func (m *mockUserRepo) ListMessengerLinks(_ context.Context, _ uuid.UUID) ([]*domain.UserMessengerLink, error) {
 	panic("not implemented")
 }
-func (m *mockUserRepo) DeleteMessengerLink(_ context.Context, _ uuid.UUID) error {
+func (m *mockUserRepo) DeleteMessengerLink(_ context.Context, _, _ uuid.UUID) error {
 	panic("not implemented")
 }
 func (m *mockUserRepo) CreateAPIKey(_ context.Context, _ *domain.APIKey) error {
@@ -81,7 +81,7 @@ func (m *mockUserRepo) CreateAPIKey(_ context.Context, _ *domain.APIKey) error {
 func (m *mockUserRepo) ListAPIKeys(_ context.Context, _, _ uuid.UUID) ([]*domain.APIKey, error) {
 	panic("not implemented")
 }
-func (m *mockUserRepo) DeleteAPIKey(_ context.Context, _ uuid.UUID) error {
+func (m *mockUserRepo) DeleteAPIKey(_ context.Context, _, _ uuid.UUID) error {
 	panic("not implemented")
 }
 
@@ -279,7 +279,7 @@ func TestRequireTenant_BlocksNilTenantID(t *testing.T) {
 func TestRateLimit_NoTenantInContext_PassesThrough(t *testing.T) {
 	t.Parallel()
 
-	handler := middleware.RateLimit(1, 1)(okHandler)
+	handler := middleware.RateLimit(t.Context(), 1, 1)(okHandler)
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	rec := httptest.NewRecorder()
 
@@ -291,7 +291,7 @@ func TestRateLimit_NoTenantInContext_PassesThrough(t *testing.T) {
 func TestRateLimit_FirstRequestWithTenant_Passes(t *testing.T) {
 	t.Parallel()
 
-	handler := middleware.RateLimit(1, 1)(okHandler)
+	handler := middleware.RateLimit(t.Context(), 1, 1)(okHandler)
 	req := setTenant(httptest.NewRequest(http.MethodGet, "/", http.NoBody), uuid.New())
 	rec := httptest.NewRecorder()
 
@@ -305,7 +305,7 @@ func TestRateLimit_BurstExceeded_Returns429(t *testing.T) {
 
 	tenantID := uuid.New()
 	// Very low rate (effectively zero refill during the test) with burst of 2.
-	handler := middleware.RateLimit(0.001, 2)(okHandler)
+	handler := middleware.RateLimit(t.Context(), 0.001, 2)(okHandler)
 
 	// First two requests consume the burst.
 	for i := range 2 {
@@ -330,7 +330,7 @@ func TestRateLimit_IndependentPerTenant(t *testing.T) {
 
 	tenantA := uuid.New()
 	tenantB := uuid.New()
-	handler := middleware.RateLimit(0.001, 1)(okHandler)
+	handler := middleware.RateLimit(t.Context(), 0.001, 1)(okHandler)
 
 	// Exhaust tenant A's burst.
 	reqA := setTenant(httptest.NewRequest(http.MethodGet, "/", http.NoBody), tenantA)

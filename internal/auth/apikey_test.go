@@ -62,7 +62,7 @@ func (m *mockUserRepo) GetMessengerLink(context.Context, uuid.UUID, string, stri
 func (m *mockUserRepo) ListMessengerLinks(context.Context, uuid.UUID) ([]*domain.UserMessengerLink, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) DeleteMessengerLink(context.Context, uuid.UUID) error { return nil }
+func (m *mockUserRepo) DeleteMessengerLink(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (m *mockUserRepo) CreateAPIKey(_ context.Context, key *domain.APIKey) error {
 	if m.createAPIKeyErr != nil {
@@ -80,7 +80,7 @@ func (m *mockUserRepo) GetAPIKeyByPrefix(_ context.Context, _ uuid.UUID, _ strin
 func (m *mockUserRepo) ListAPIKeys(context.Context, uuid.UUID, uuid.UUID) ([]*domain.APIKey, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) DeleteAPIKey(context.Context, uuid.UUID) error { return nil }
+func (m *mockUserRepo) DeleteAPIKey(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (m *mockUserRepo) UpdateAPIKeyLastUsed(_ context.Context, _ uuid.UUID) error {
 	return m.updateLastUsedErr
 }

@@ -87,7 +87,9 @@ func (b *ClaudeBackend) StartSession(ctx context.Context, opts agent.SessionOpti
 		b.mu.Lock()
 		delete(b.sessions, sessionID)
 		b.mu.Unlock()
-		_ = b.runtime.RemoveContainer(ctx, containerID)
+		if rmErr := b.runtime.RemoveContainer(ctx, containerID); rmErr != nil {
+			log.Error().Err(rmErr).Str("container_id", containerID).Msg("agent.ClaudeBackend: failed to remove container after start failure")
+		}
 		return uuid.Nil, fmt.Errorf("agent.ClaudeBackend.StartSession: %w", err)
 	}
 
