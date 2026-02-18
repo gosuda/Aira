@@ -179,15 +179,39 @@ func TestGetBoard(t *testing.T) {
 
 		pid := uuid.New()
 
+		var storeCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
-			tasks: &mockTaskRepo{},
+			tasks: &mockTaskRepo{
+				listByProjectFunc: func(_ context.Context, _, _ uuid.UUID) ([]*domain.Task, error) {
+					storeCalled = true
+					return nil, nil
+				},
+			},
 		}
 		v1.RegisterBoardRoutes(api, store)
 
 		resp := api.GetCtx(context.Background(), "/boards/"+pid.String())
 
 		assert.Equal(t, http.StatusForbidden, resp.Code)
+		assert.False(t, storeCalled, "store must NOT be accessed without tenant context")
+	})
+
+	t.Run("invalid_project_id", func(t *testing.T) {
+		t.Parallel()
+
+		tid := uuid.New()
+
+		_, api := humatest.New(t)
+		store := &mockDataStore{
+			tasks: &mockTaskRepo{},
+		}
+		v1.RegisterBoardRoutes(api, store)
+
+		resp := api.GetCtx(tenantCtx(tid), "/boards/not-a-uuid")
+
+		// Huma returns 422 for unparseable path parameters.
+		assert.Equal(t, http.StatusUnprocessableEntity, resp.Code)
 	})
 
 	t.Run("store_error", func(t *testing.T) {

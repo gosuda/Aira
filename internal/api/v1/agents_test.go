@@ -74,8 +74,9 @@ func TestTriggerAgent(t *testing.T) {
 		api, _, orch := newAgentTestAPI(t)
 		session := makeSession(tenantID, projectID)
 
-		orch.startTaskFunc = func(_ context.Context, tid, _ uuid.UUID, agentType string) (*domain.AgentSession, error) {
+		orch.startTaskFunc = func(_ context.Context, tid, taskID uuid.UUID, agentType string) (*domain.AgentSession, error) {
 			assert.Equal(t, tenantID, tid)
+			assert.Equal(t, *session.TaskID, taskID)
 			assert.Equal(t, "claude", agentType)
 			return session, nil
 		}

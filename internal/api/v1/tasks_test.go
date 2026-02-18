@@ -521,7 +521,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 	t.Run("happy_path", func(t *testing.T) {
 		t.Parallel()
 
-		var updateStatusCalled bool
+		var updateStatusCount int
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
@@ -533,7 +533,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 					}, nil
 				},
 				updateStatusFunc: func(_ context.Context, tid, id uuid.UUID, status domain.TaskStatus) error {
-					updateStatusCalled = true
+					updateStatusCount++
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, taskID, id)
 					assert.Equal(t, domain.TaskStatusInProgress, status)
@@ -549,7 +549,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 		})
 
 		require.Equal(t, http.StatusOK, resp.Code)
-		assert.True(t, updateStatusCalled, "UpdateStatus must be invoked")
+		assert.Equal(t, 1, updateStatusCount, "UpdateStatus must be called exactly once")
 
 		var body domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
