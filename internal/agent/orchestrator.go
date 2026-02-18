@@ -182,6 +182,14 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 		return nil, fmt.Errorf("agent.Orchestrator.StartTask: start session: %w", err)
 	}
 
+	// Persist the container identifier to the DB so waitForCompletion can use
+	// WaitContainer instead of falling through to pollCompletion.
+	// The Docker API accepts container names interchangeably with IDs.
+	containerName := "aira-agent-" + session.ID.String()
+	if updateErr := o.sessions.UpdateContainer(ctx, tenantID, session.ID, containerName, session.BranchName); updateErr != nil {
+		log.Error().Err(updateErr).Str("session_id", session.ID.String()).Msg("agent.StartTask: failed to persist container info")
+	}
+
 	// Track backend for HITL and cancellation.
 	o.mu.Lock()
 	o.backends[session.ID] = backend

@@ -288,12 +288,22 @@ func (r *UserRepo) GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, pr
 	var key domain.APIKey
 	var scopes []byte
 
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
-		 FROM api_keys WHERE tenant_id = $1 AND prefix = $2`,
-		tenantID, prefix,
-	).Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
-		&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt)
+	var err error
+	if tenantID == uuid.Nil {
+		err = r.pool.QueryRow(ctx,
+			`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
+			 FROM api_keys WHERE prefix = $1`,
+			prefix,
+		).Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
+			&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt)
+	} else {
+		err = r.pool.QueryRow(ctx,
+			`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
+			 FROM api_keys WHERE tenant_id = $1 AND prefix = $2`,
+			tenantID, prefix,
+		).Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
+			&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("userRepo.GetAPIKeyByPrefix: %w", domain.ErrNotFound)
 	}

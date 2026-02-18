@@ -101,7 +101,7 @@ func (d *DockerRuntime) CreateContainer(ctx context.Context, opts ContainerOptio
 				Target: opts.ProjectDir,
 			},
 		},
-		NetworkMode: "none",
+		NetworkMode: "bridge",
 	}
 
 	name := "aira-agent-" + opts.SessionID.String()
