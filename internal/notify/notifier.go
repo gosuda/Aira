@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 
@@ -51,7 +52,7 @@ func (n *Notifier) Notify(ctx context.Context, userID uuid.UUID, message string)
 	}
 
 	if len(links) == 0 {
-		slog.Warn("no messenger links for user", "user_id", userID, "message", message)
+		log.Warn().Str("user_id", userID.String()).Str("message", message).Msg("no messenger links for user")
 		return nil
 	}
 

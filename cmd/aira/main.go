@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"math"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gosuda/aira/internal/agent"
 	"github.com/gosuda/aira/internal/agent/backends"
@@ -24,34 +25,25 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("startup failed", "error", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("startup failed")
 	}
 }
 
 func run() error {
 	// Initialize structured logging from environment.
 	logLevel := os.Getenv("AIRA_LOG_LEVEL")
-	var level slog.Level
-	switch strings.ToLower(logLevel) {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
+	level, parseErr := zerolog.ParseLevel(logLevel)
+	if parseErr != nil {
+		level = zerolog.InfoLevel
 	}
+	zerolog.SetGlobalLevel(level)
 
 	logFormat := os.Getenv("AIRA_LOG_FORMAT")
-	var handler slog.Handler
 	if logFormat == "text" {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
 	} else {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 	}
-	slog.SetDefault(slog.New(handler))
 
 	ctx := context.Background()
 
@@ -131,15 +123,15 @@ func run() error {
 
 	// Start server in background goroutine.
 	go func() {
-		slog.Info("starting server", "addr", cfg.Server.Addr)
+		log.Info().Str("addr", cfg.Server.Addr).Msg("starting server")
 		if startErr := srv.Start(ctx); startErr != nil {
-			slog.Error("server error", "error", startErr)
+			log.Error().Err(startErr).Msg("server error")
 		}
 	}()
 
 	// Block until shutdown signal.
 	<-ctx.Done()
-	slog.Info("shutting down")
+	log.Info().Msg("shutting down")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
@@ -148,6 +140,6 @@ func run() error {
 		return shutdownErr
 	}
 
-	slog.Info("stopped")
+	log.Info().Msg("stopped")
 	return nil
 }

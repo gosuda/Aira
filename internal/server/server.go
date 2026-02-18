@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -139,7 +140,7 @@ func New(cfg *config.Config, store *postgres.Store, pubsub *redisstore.PubSub, a
 	// This must be the last route registered so API/WS/Slack routes take priority.
 	if webAssets != nil {
 		router.NotFound(spaFileServer(webAssets).ServeHTTP)
-		slog.Info("embedded SvelteKit dashboard enabled")
+		log.Info().Msg("embedded SvelteKit dashboard enabled")
 	}
 
 	return s
@@ -176,7 +177,7 @@ func (s *Server) buildSlackHandler(cfg *config.Config, store *postgres.Store, or
 
 	handler := airaslack.NewHandler(cfg.Slack.SigningSecret, adapter, tenantID)
 
-	slog.Info("Slack integration enabled")
+	log.Info().Msg("Slack integration enabled")
 
 	return handler
 }

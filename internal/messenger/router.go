@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 
@@ -199,14 +200,14 @@ func (r *Router) StartTimeoutWatcher(ctx context.Context) {
 func (r *Router) processExpiredQuestions(ctx context.Context) {
 	expired, err := r.questions.ListExpired(ctx)
 	if err != nil {
-		slog.Error("list expired questions", "error", err)
+		log.Error().Err(err).Msg("list expired questions")
 		return
 	}
 
 	for _, q := range expired {
 		cancelErr := r.questions.Cancel(ctx, q.TenantID, q.ID)
 		if cancelErr != nil {
-			slog.Error("cancel expired question", "question_id", q.ID.String(), "error", cancelErr)
+			log.Error().Err(cancelErr).Str("question_id", q.ID.String()).Msg("cancel expired question")
 			continue
 		}
 
@@ -214,7 +215,7 @@ func (r *Router) processExpiredQuestions(ctx context.Context) {
 		timeoutMsg := "Question timed out: " + q.Question
 		updateErr := r.messenger.UpdateMessage(ctx, q.MessengerThreadID, MessageID(q.MessengerThreadID), timeoutMsg)
 		if updateErr != nil {
-			slog.Error("update thread with timeout", "thread_id", q.MessengerThreadID, "error", updateErr)
+			log.Error().Err(updateErr).Str("thread_id", q.MessengerThreadID).Msg("update thread with timeout")
 		}
 
 		// Escalation: send notification to configured escalation channel.
@@ -222,10 +223,10 @@ func (r *Router) processExpiredQuestions(ctx context.Context) {
 			escMsg := fmt.Sprintf("HITL question timed out (session %s): %s", q.AgentSessionID, q.Question)
 			_, escErr := r.messenger.SendMessage(ctx, r.escalation.ChannelID, escMsg)
 			if escErr != nil {
-				slog.Error("escalation failed", "question_id", q.ID.String(), "error", escErr)
+				log.Error().Err(escErr).Str("question_id", q.ID.String()).Msg("escalation failed")
 			}
 		}
 
-		slog.Warn("question timed out", "question_id", q.ID.String(), "question", q.Question)
+		log.Warn().Str("question_id", q.ID.String()).Str("question", q.Question).Msg("question timed out")
 	}
 }

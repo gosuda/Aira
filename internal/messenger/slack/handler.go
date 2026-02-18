@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	slacklib "github.com/slack-go/slack"
@@ -89,7 +90,7 @@ func (h *Handler) handleURLVerification(w http.ResponseWriter, challenge string)
 
 	resp := map[string]string{"challenge": challenge}
 	if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
-		slog.Error("encode url verification response", "error", encodeErr)
+		log.Error().Err(encodeErr).Msg("encode url verification response")
 	}
 }
 
@@ -108,7 +109,7 @@ func (h *Handler) handleEventCallback(ctx context.Context, w http.ResponseWriter
 	}
 
 	if respondErr := h.responder.HandleSlackResponse(ctx, h.tenantID, evt.ThreadTS, evt.Text, evt.User); respondErr != nil {
-		slog.Error("dispatch event callback response", "error", respondErr)
+		log.Error().Err(respondErr).Msg("dispatch event callback response")
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -166,7 +167,7 @@ func (h *Handler) HandleInteractions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if respondErr := h.responder.HandleSlackResponse(r.Context(), h.tenantID, threadTS, actionValue, userID); respondErr != nil {
-		slog.Error("dispatch interaction response", "error", respondErr)
+		log.Error().Err(respondErr).Msg("dispatch interaction response")
 	}
 
 	w.WriteHeader(http.StatusOK)

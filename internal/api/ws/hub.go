@@ -3,8 +3,9 @@ package ws
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
@@ -43,7 +44,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		slog.Error("websocket accept", "error", err)
+		log.Error().Err(err).Msg("websocket accept")
 		return
 	}
 	defer conn.CloseNow()
@@ -53,7 +54,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
-		slog.Error("websocket subscribe", "error", err)
+		log.Error().Err(err).Msg("websocket subscribe")
 		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
 		return
 	}
@@ -70,7 +71,7 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
-				slog.Debug("websocket write", "error", writeErr)
+				log.Debug().Err(writeErr).Msg("websocket write")
 				return
 			}
 		}
@@ -90,7 +91,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		slog.Error("websocket accept", "error", err)
+		log.Error().Err(err).Msg("websocket accept")
 		return
 	}
 	defer conn.CloseNow()
@@ -100,7 +101,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 
 	messages, cleanup, err := h.pubsub.Subscribe(ctx, channel)
 	if err != nil {
-		slog.Error("websocket subscribe", "error", err)
+		log.Error().Err(err).Msg("websocket subscribe")
 		_ = conn.Close(websocket.StatusInternalError, "subscribe failed")
 		return
 	}
@@ -117,7 +118,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
-				slog.Debug("websocket write", "error", writeErr)
+				log.Debug().Err(writeErr).Msg("websocket write")
 				return
 			}
 		}
