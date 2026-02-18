@@ -84,7 +84,10 @@ func New(ctx context.Context, cfg *config.Config, store *postgres.Store, pubsub 
 	// 2. Authenticated group for all other endpoints.
 	router.Route("/api/v1", func(r chi.Router) {
 		// Unauthenticated auth routes (register, login, refresh).
+		// IP-based rate limiting: 5 req/s, burst 10 — protects against brute-force.
 		r.Group(func(r chi.Router) {
+			r.Use(middleware.RateLimitByIP(ctx, 5, 10))
+
 			authConfig := huma.DefaultConfig("Aira Auth API", "1.0.0")
 			authConfig.Servers = []*huma.Server{
 				{URL: "/api/v1"},

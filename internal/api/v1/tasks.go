@@ -48,9 +48,9 @@ type UpdateTaskInput struct {
 	ID   uuid.UUID `path:"id" doc:"Task ID"`
 	Body struct {
 		Title       string     `json:"title,omitempty" maxLength:"500" doc:"Task title"`
-		Description string     `json:"description,omitempty" doc:"Task description"`
+		Description string     `json:"description,omitempty" maxLength:"10000" doc:"Task description"`
 		ADRID       *uuid.UUID `json:"adr_id,omitempty" doc:"Parent ADR ID"`
-		Priority    *int       `json:"priority,omitempty" doc:"Task priority"`
+		Priority    *int       `json:"priority,omitempty" minimum:"0" maximum:"100" doc:"Task priority (0=default, 100=highest)"`
 		AssignedTo  *uuid.UUID `json:"assigned_to,omitempty" doc:"Assigned user ID"`
 	}
 }
@@ -62,7 +62,7 @@ type UpdateTaskOutput struct {
 type TransitionTaskStatusInput struct {
 	ID   uuid.UUID `path:"id" doc:"Task ID"`
 	Body struct {
-		Status string `json:"status" minLength:"1" doc:"Target status"`
+		Status string `json:"status" minLength:"1" maxLength:"50" doc:"Target status"`
 	}
 }
 

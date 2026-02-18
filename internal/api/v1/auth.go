@@ -45,7 +45,7 @@ type LoginOutput struct {
 
 type RefreshInput struct {
 	Body struct {
-		RefreshToken string `json:"refresh_token" minLength:"1" doc:"Refresh token"` //nolint:gosec // G117: token refresh DTO
+		RefreshToken string `json:"refresh_token" minLength:"1" maxLength:"4096" doc:"Refresh token"` //nolint:gosec // G117: token refresh DTO
 	}
 }
 

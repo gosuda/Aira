@@ -17,8 +17,8 @@ import (
 type CreateProjectInput struct {
 	Body struct {
 		Name     string          `json:"name" minLength:"1" maxLength:"255" doc:"Project name"`
-		RepoURL  string          `json:"repo_url" minLength:"1" doc:"Git clone URL"`
-		Branch   string          `json:"branch,omitempty" doc:"Default branch"`
+		RepoURL  string          `json:"repo_url" minLength:"1" maxLength:"2048" doc:"Git clone URL"`
+		Branch   string          `json:"branch,omitempty" maxLength:"255" doc:"Default branch"`
 		Settings json.RawMessage `json:"settings,omitempty" doc:"Project settings"`
 	}
 }
@@ -45,8 +45,8 @@ type UpdateProjectInput struct {
 	ID   uuid.UUID `path:"id" doc:"Project ID"`
 	Body struct {
 		Name     string          `json:"name,omitempty" maxLength:"255" doc:"Project name"`
-		RepoURL  string          `json:"repo_url,omitempty" doc:"Git clone URL"`
-		Branch   string          `json:"branch,omitempty" doc:"Default branch"`
+		RepoURL  string          `json:"repo_url,omitempty" maxLength:"2048" doc:"Git clone URL"`
+		Branch   string          `json:"branch,omitempty" maxLength:"255" doc:"Default branch"`
 		Settings json.RawMessage `json:"settings,omitempty" doc:"Project settings"`
 	}
 }

@@ -32,7 +32,7 @@ type GetADROutput struct {
 type UpdateADRStatusInput struct {
 	ID   uuid.UUID `path:"id" doc:"ADR ID"`
 	Body struct {
-		Status string `json:"status" minLength:"1" doc:"New ADR status"`
+		Status string `json:"status" minLength:"1" maxLength:"50" doc:"New ADR status"`
 	}
 }
 

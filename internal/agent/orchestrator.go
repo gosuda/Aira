@@ -42,6 +42,9 @@ type Orchestrator struct {
 	backends map[SessionID]AgentBackend
 	mu       sync.RWMutex
 
+	// wg tracks background goroutines (waitForCompletion) for graceful shutdown.
+	wg sync.WaitGroup
+
 	done chan struct{}
 }
 
@@ -69,9 +72,10 @@ func NewOrchestrator(
 	}
 }
 
-// Shutdown signals all background goroutines to stop.
+// Shutdown signals all background goroutines to stop and waits for them to drain.
 func (o *Orchestrator) Shutdown() {
 	close(o.done)
+	o.wg.Wait()
 }
 
 // StartTask picks up a task, creates an agent session, prepares the repo volume,
@@ -199,7 +203,9 @@ func (o *Orchestrator) StartTask(ctx context.Context, tenantID, taskID uuid.UUID
 	}
 
 	// 9. Start background goroutine to wait for completion.
-	go o.waitForCompletion(session.ID, session.TenantID)
+	o.wg.Go(func() {
+		o.waitForCompletion(session.ID, session.TenantID)
+	})
 
 	return session, nil
 }
@@ -322,6 +328,7 @@ func (o *Orchestrator) handleMessage(sessionID, tenantID uuid.UUID, msg Message)
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
+		log.Error().Err(err).Str("session_id", sessionID.String()).Msg("agent.handleMessage: failed to marshal message")
 		return
 	}
 
@@ -466,7 +473,11 @@ func (o *Orchestrator) cleanupBackend(sessionID uuid.UUID) {
 // cleanupWorktree removes the git worktree for a completed/cancelled session.
 func (o *Orchestrator) cleanupWorktree(ctx context.Context, sessionID, tenantID uuid.UUID) {
 	session, err := o.sessions.GetByID(ctx, tenantID, sessionID)
-	if err != nil || session.BranchName == "" {
+	if err != nil {
+		log.Warn().Err(err).Str("session_id", sessionID.String()).Msg("agent.cleanupWorktree: failed to get session")
+		return
+	}
+	if session.BranchName == "" {
 		return
 	}
 
