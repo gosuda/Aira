@@ -125,7 +125,8 @@ func (r *AgentSessionRepo) ListByTask(ctx context.Context, tenantID, taskID uuid
 		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
 		        started_at, completed_at, error, metadata, created_at
 		 FROM agent_sessions WHERE tenant_id = $1 AND task_id = $2
-		 ORDER BY created_at DESC, id`,
+		 ORDER BY created_at DESC, id
+		 LIMIT 500`,
 		tenantID, taskID,
 	)
 	if err != nil {
