@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,8 +53,20 @@ func (r *ADRRepo) Create(ctx context.Context, adr *domain.ADR) error {
 		return nil
 	}
 
-	// Allocate sequence atomically via subquery to prevent race conditions.
-	err = r.pool.QueryRow(ctx,
+	// Allocate sequence under advisory lock to prevent concurrent inserts
+	// from reading the same MAX(sequence) and colliding on the unique constraint.
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("adrRepo.Create: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	lockKey := int64(binary.BigEndian.Uint64(adr.ProjectID[:8])) //nolint:gosec // G115: intentional truncation for advisory lock key
+	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", lockKey); err != nil {
+		return fmt.Errorf("adrRepo.Create: advisory lock: %w", err)
+	}
+
+	err = tx.QueryRow(ctx,
 		`INSERT INTO adrs (id, tenant_id, project_id, sequence, title, status, context, decision, drivers, options, consequences, created_by, agent_session_id, created_at, updated_at)
 		 VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sequence), 0) + 1 FROM adrs WHERE project_id = $3), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		 RETURNING sequence`,
@@ -63,6 +76,10 @@ func (r *ADRRepo) Create(ctx context.Context, adr *domain.ADR) error {
 	).Scan(&adr.Sequence)
 	if err != nil {
 		return fmt.Errorf("adrRepo.Create: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("adrRepo.Create: commit: %w", err)
 	}
 
 	return nil
