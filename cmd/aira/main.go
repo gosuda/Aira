@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -108,6 +110,8 @@ func run() error {
 		pubsub,
 	)
 
+	defer orchestrator.Shutdown()
+
 	// Prepare embedded SvelteKit assets (strip "build/" prefix from fs paths).
 	webAssets, err := fs.Sub(web.Assets, "build")
 	if err != nil {
@@ -124,8 +128,9 @@ func run() error {
 	// Start server in background goroutine.
 	go func() {
 		log.Info().Str("addr", cfg.Server.Addr).Msg("starting server")
-		if startErr := srv.Start(ctx); startErr != nil {
+		if startErr := srv.Start(ctx); startErr != nil && !errors.Is(startErr, http.ErrServerClosed) {
 			log.Error().Err(startErr).Msg("server error")
+			cancel()
 		}
 	}()
 
