@@ -16,10 +16,8 @@ import (
 // --- mock repositories ---
 
 type mockADRRepository struct {
-	nextSeq    int
-	nextSeqErr error
-	createErr  error
-	created    []*domain.ADR
+	createErr error
+	created   []*domain.ADR
 }
 
 func (m *mockADRRepository) Create(_ context.Context, adr *domain.ADR) error {
@@ -40,13 +38,6 @@ func (m *mockADRRepository) ListByProject(context.Context, uuid.UUID, uuid.UUID)
 
 func (m *mockADRRepository) UpdateStatus(context.Context, uuid.UUID, uuid.UUID, domain.ADRStatus) error {
 	return nil
-}
-
-func (m *mockADRRepository) NextSequence(_ context.Context, _ uuid.UUID) (int, error) {
-	if m.nextSeqErr != nil {
-		return 0, m.nextSeqErr
-	}
-	return m.nextSeq, nil
 }
 
 type mockProjectRepository struct {
@@ -176,7 +167,7 @@ func TestProcessADRToolCall(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		adrRepo := &mockADRRepository{nextSeq: 5}
+		adrRepo := &mockADRRepository{}
 		projRepo := &mockProjectRepository{
 			project: &domain.Project{ID: projectID, TenantID: tenantID, Name: "test"},
 		}
@@ -190,7 +181,7 @@ func TestProcessADRToolCall(t *testing.T) {
 		require.NotNil(t, adr)
 		assert.Equal(t, tenantID, adr.TenantID)
 		assert.Equal(t, projectID, adr.ProjectID)
-		assert.Equal(t, 5, adr.Sequence)
+		assert.Equal(t, 0, adr.Sequence) // sequence allocated atomically by the store
 		assert.Equal(t, "Use Redis for caching", adr.Title)
 		assert.Equal(t, domain.ADRStatusProposed, adr.Status)
 		assert.Equal(t, input.Context, adr.Context)
@@ -205,7 +196,7 @@ func TestProcessADRToolCall(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		adrRepo := &mockADRRepository{nextSeq: 1}
+		adrRepo := &mockADRRepository{}
 		projRepo := &mockProjectRepository{getByErr: errors.New("not found")}
 
 		deps := agent.ADRToolDeps{ADRs: adrRepo, Projects: projRepo}
@@ -218,30 +209,11 @@ func TestProcessADRToolCall(t *testing.T) {
 		assert.Contains(t, err.Error(), "get project")
 	})
 
-	t.Run("NextSequence error", func(t *testing.T) {
-		t.Parallel()
-		ctx := t.Context()
-
-		adrRepo := &mockADRRepository{nextSeqErr: errors.New("db down")}
-		projRepo := &mockProjectRepository{
-			project: &domain.Project{ID: projectID, TenantID: tenantID},
-		}
-
-		deps := agent.ADRToolDeps{ADRs: adrRepo, Projects: projRepo}
-		input := newInput()
-
-		adr, err := agent.ProcessADRToolCall(ctx, deps, input)
-
-		require.Error(t, err)
-		assert.Nil(t, adr)
-		assert.Contains(t, err.Error(), "next sequence")
-	})
-
 	t.Run("Create error", func(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		adrRepo := &mockADRRepository{nextSeq: 3, createErr: errors.New("unique constraint")}
+		adrRepo := &mockADRRepository{createErr: errors.New("unique constraint")}
 		projRepo := &mockProjectRepository{
 			project: &domain.Project{ID: projectID, TenantID: tenantID},
 		}
@@ -260,7 +232,7 @@ func TestProcessADRToolCall(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		adrRepo := &mockADRRepository{nextSeq: 1}
+		adrRepo := &mockADRRepository{}
 		projRepo := &mockProjectRepository{
 			project: &domain.Project{ID: projectID, TenantID: tenantID},
 		}

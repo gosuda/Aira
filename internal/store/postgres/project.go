@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -22,15 +21,10 @@ func NewProjectRepo(pool *pgxpool.Pool) *ProjectRepo {
 }
 
 func (r *ProjectRepo) Create(ctx context.Context, p *domain.Project) error {
-	settings, err := json.Marshal(p.Settings)
-	if err != nil {
-		return fmt.Errorf("projectRepo.Create: marshal settings: %w", err)
-	}
-
-	_, err = r.pool.Exec(ctx,
+	_, err := r.pool.Exec(ctx,
 		`INSERT INTO projects (id, tenant_id, name, repo_url, branch, settings, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		p.ID, p.TenantID, p.Name, p.RepoURL, p.Branch, settings, p.CreatedAt,
+		p.ID, p.TenantID, p.Name, p.RepoURL, p.Branch, p.Settings, p.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("projectRepo.Create: %w", err)
@@ -41,13 +35,12 @@ func (r *ProjectRepo) Create(ctx context.Context, p *domain.Project) error {
 
 func (r *ProjectRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Project, error) {
 	var p domain.Project
-	var settings []byte
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo_url, branch, settings, created_at
 		 FROM projects WHERE tenant_id = $1 AND id = $2`,
 		tenantID, id,
-	).Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &settings, &p.CreatedAt)
+	).Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &p.Settings, &p.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("projectRepo.GetByID: %w", domain.ErrNotFound)
 	}
@@ -55,24 +48,14 @@ func (r *ProjectRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*dom
 		return nil, fmt.Errorf("projectRepo.GetByID: %w", err)
 	}
 
-	err = json.Unmarshal(settings, &p.Settings)
-	if err != nil {
-		return nil, fmt.Errorf("projectRepo.GetByID: unmarshal settings: %w", err)
-	}
-
 	return &p, nil
 }
 
 func (r *ProjectRepo) Update(ctx context.Context, p *domain.Project) error {
-	settings, err := json.Marshal(p.Settings)
-	if err != nil {
-		return fmt.Errorf("projectRepo.Update: marshal settings: %w", err)
-	}
-
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE projects SET name = $1, repo_url = $2, branch = $3, settings = $4
 		 WHERE tenant_id = $5 AND id = $6`,
-		p.Name, p.RepoURL, p.Branch, settings, p.TenantID, p.ID,
+		p.Name, p.RepoURL, p.Branch, p.Settings, p.TenantID, p.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("projectRepo.Update: %w", err)
@@ -98,15 +81,10 @@ func (r *ProjectRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.P
 	var projects []*domain.Project
 	for rows.Next() {
 		var p domain.Project
-		var settings []byte
 
-		err = rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &settings, &p.CreatedAt)
+		err = rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &p.Settings, &p.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("projectRepo.List: scan: %w", err)
-		}
-		err = json.Unmarshal(settings, &p.Settings)
-		if err != nil {
-			return nil, fmt.Errorf("projectRepo.List: unmarshal settings: %w", err)
 		}
 		projects = append(projects, &p)
 	}

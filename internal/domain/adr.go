@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,5 +47,18 @@ type ADRRepository interface {
 	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*ADR, error)
 	ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*ADR, error)
 	UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status ADRStatus) error
-	NextSequence(ctx context.Context, projectID uuid.UUID) (int, error)
+}
+
+// ValidADRStatuses is the canonical set of known ADR statuses.
+var ValidADRStatuses = []ADRStatus{ //nolint:gochecknoglobals // canonical enum list
+	ADRStatusDraft,
+	ADRStatusProposed,
+	ADRStatusAccepted,
+	ADRStatusRejected,
+	ADRStatusDeprecated,
+}
+
+// ValidateStatus returns true if the given status is a known ADR status.
+func ValidateStatus(s ADRStatus) bool {
+	return slices.Contains(ValidADRStatuses, s)
 }

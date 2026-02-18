@@ -37,13 +37,30 @@ func (r *ADRRepo) Create(ctx context.Context, adr *domain.ADR) error {
 		return fmt.Errorf("adrRepo.Create: marshal consequences: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx,
+	if adr.Sequence > 0 {
+		// Explicit sequence — used for idempotent re-inserts.
+		_, err = r.pool.Exec(ctx,
+			`INSERT INTO adrs (id, tenant_id, project_id, sequence, title, status, context, decision, drivers, options, consequences, created_by, agent_session_id, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+			adr.ID, adr.TenantID, adr.ProjectID, adr.Sequence, adr.Title, adr.Status,
+			adr.Context, adr.Decision, drivers, options, consequences,
+			adr.CreatedBy, adr.AgentSessionID, adr.CreatedAt, adr.UpdatedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("adrRepo.Create: %w", err)
+		}
+		return nil
+	}
+
+	// Allocate sequence atomically via subquery to prevent race conditions.
+	err = r.pool.QueryRow(ctx,
 		`INSERT INTO adrs (id, tenant_id, project_id, sequence, title, status, context, decision, drivers, options, consequences, created_by, agent_session_id, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-		adr.ID, adr.TenantID, adr.ProjectID, adr.Sequence, adr.Title, adr.Status,
+		 VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sequence), 0) + 1 FROM adrs WHERE project_id = $3), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		 RETURNING sequence`,
+		adr.ID, adr.TenantID, adr.ProjectID, adr.Title, adr.Status,
 		adr.Context, adr.Decision, drivers, options, consequences,
 		adr.CreatedBy, adr.AgentSessionID, adr.CreatedAt, adr.UpdatedAt,
-	)
+	).Scan(&adr.Sequence)
 	if err != nil {
 		return fmt.Errorf("adrRepo.Create: %w", err)
 	}
@@ -133,20 +150,6 @@ func (r *ADRRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, stat
 	}
 
 	return nil
-}
-
-func (r *ADRRepo) NextSequence(ctx context.Context, projectID uuid.UUID) (int, error) {
-	var seq int
-
-	err := r.pool.QueryRow(ctx,
-		`SELECT COALESCE(MAX(sequence), 0) + 1 FROM adrs WHERE project_id = $1`,
-		projectID,
-	).Scan(&seq)
-	if err != nil {
-		return 0, fmt.Errorf("adrRepo.NextSequence: %w", err)
-	}
-
-	return seq, nil
 }
 
 func unmarshalADRJSON(adr *domain.ADR, drivers, options, consequences []byte) error {

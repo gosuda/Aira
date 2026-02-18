@@ -2,10 +2,10 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
@@ -17,10 +17,10 @@ import (
 
 type CreateProjectInput struct {
 	Body struct {
-		Name     string         `json:"name" minLength:"1" maxLength:"255" doc:"Project name"`
-		RepoURL  string         `json:"repo_url" minLength:"1" doc:"Git clone URL"`
-		Branch   string         `json:"branch,omitempty" doc:"Default branch"`
-		Settings map[string]any `json:"settings,omitempty" doc:"Project settings"`
+		Name     string          `json:"name" minLength:"1" maxLength:"255" doc:"Project name"`
+		RepoURL  string          `json:"repo_url" minLength:"1" doc:"Git clone URL"`
+		Branch   string          `json:"branch,omitempty" doc:"Default branch"`
+		Settings json.RawMessage `json:"settings,omitempty" doc:"Project settings"`
 	}
 }
 
@@ -45,10 +45,10 @@ type GetProjectOutput struct {
 type UpdateProjectInput struct {
 	ID   uuid.UUID `path:"id" doc:"Project ID"`
 	Body struct {
-		Name     string         `json:"name,omitempty" maxLength:"255" doc:"Project name"`
-		RepoURL  string         `json:"repo_url,omitempty" doc:"Git clone URL"`
-		Branch   string         `json:"branch,omitempty" doc:"Default branch"`
-		Settings map[string]any `json:"settings,omitempty" doc:"Project settings"`
+		Name     string          `json:"name,omitempty" maxLength:"255" doc:"Project name"`
+		RepoURL  string          `json:"repo_url,omitempty" doc:"Git clone URL"`
+		Branch   string          `json:"branch,omitempty" doc:"Default branch"`
+		Settings json.RawMessage `json:"settings,omitempty" doc:"Project settings"`
 	}
 }
 
@@ -77,21 +77,13 @@ func RegisterProjectRoutes(api huma.API, store *postgres.Store) {
 			return nil, huma.Error400BadRequest("repo_url must use https:// or git@ scheme")
 		}
 
-		p := &domain.Project{
-			ID:        uuid.New(),
-			TenantID:  tenantID,
-			Name:      input.Body.Name,
-			RepoURL:   input.Body.RepoURL,
-			Branch:    input.Body.Branch,
-			Settings:  input.Body.Settings,
-			CreatedAt: time.Now(),
-		}
-		if p.Branch == "" {
-			p.Branch = "main"
+		p, err := domain.NewProject(tenantID, input.Body.Name, input.Body.RepoURL, input.Body.Branch, input.Body.Settings)
+		if err != nil {
+			return nil, huma.Error400BadRequest(err.Error())
 		}
 
-		if err := store.Projects().Create(ctx, p); err != nil {
-			return nil, huma.Error500InternalServerError("failed to create project", err)
+		if createErr := store.Projects().Create(ctx, p); createErr != nil {
+			return nil, huma.Error500InternalServerError("failed to create project", createErr)
 		}
 
 		return &CreateProjectOutput{Body: p}, nil

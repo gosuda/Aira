@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,7 +12,7 @@ type Tenant struct {
 	ID        uuid.UUID
 	Name      string
 	Slug      string
-	Settings  map[string]any
+	Settings  json.RawMessage
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

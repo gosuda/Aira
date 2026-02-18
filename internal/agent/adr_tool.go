@@ -61,8 +61,9 @@ type ADRToolDeps struct {
 	Projects domain.ProjectRepository
 }
 
-// ProcessADRToolCall validates the input, allocates a sequence number, creates a domain.ADR,
-// and persists it via the ADRRepository. Returns the created ADR or an error.
+// ProcessADRToolCall validates the input, creates a domain.ADR, and persists it
+// via the ADRRepository. The store allocates the sequence number atomically.
+// Returns the created ADR or an error.
 func ProcessADRToolCall(ctx context.Context, deps ADRToolDeps, input *ADRToolInput) (*domain.ADR, error) {
 	if err := ValidateADRToolInput(input); err != nil {
 		return nil, fmt.Errorf("agent.ProcessADRToolCall: %w", err)
@@ -74,12 +75,6 @@ func ProcessADRToolCall(ctx context.Context, deps ADRToolDeps, input *ADRToolInp
 		return nil, fmt.Errorf("agent.ProcessADRToolCall: get project: %w", err)
 	}
 
-	// Allocate next sequence number for the project.
-	seq, err := deps.ADRs.NextSequence(ctx, input.ProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("agent.ProcessADRToolCall: next sequence: %w", err)
-	}
-
 	sessionID := input.SessionID
 	now := time.Now()
 
@@ -87,7 +82,7 @@ func ProcessADRToolCall(ctx context.Context, deps ADRToolDeps, input *ADRToolInp
 		ID:        uuid.New(),
 		TenantID:  input.TenantID,
 		ProjectID: input.ProjectID,
-		Sequence:  seq,
+		Sequence:  0, // allocated atomically by the store
 		Title:     input.Title,
 		Status:    domain.ADRStatusProposed,
 		Context:   input.Context,

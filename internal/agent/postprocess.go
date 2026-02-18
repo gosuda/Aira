@@ -97,18 +97,13 @@ func (p *PostProcessor) ExtractImplicitADRs(
 			continue
 		}
 
-		// Allocate sequence and create draft ADR.
-		seq, seqErr := p.adrs.NextSequence(ctx, projectID)
-		if seqErr != nil {
-			return created, fmt.Errorf("agent.PostProcessor.ExtractImplicitADRs: next sequence: %w", seqErr)
-		}
-
+		// Create draft ADR — sequence is allocated atomically by the store.
 		now := time.Now()
 		adr := &domain.ADR{
 			ID:        uuid.New(),
 			TenantID:  tenantID,
 			ProjectID: projectID,
-			Sequence:  seq,
+			Sequence:  0,
 			Title:     title,
 			Status:    domain.ADRStatusDraft,
 			Context:   "Automatically detected from agent conversation: " + d.Source,

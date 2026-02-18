@@ -16,12 +16,10 @@ import (
 // --- mock ADR repository for postprocess tests ---
 
 type mockPostprocessADRRepo struct {
-	existing   []*domain.ADR
-	listErr    error
-	nextSeq    int
-	nextSeqErr error
-	createErr  error
-	created    []*domain.ADR
+	existing  []*domain.ADR
+	listErr   error
+	createErr error
+	created   []*domain.ADR
 }
 
 func (m *mockPostprocessADRRepo) Create(_ context.Context, adr *domain.ADR) error {
@@ -45,15 +43,6 @@ func (m *mockPostprocessADRRepo) ListByProject(_ context.Context, _, _ uuid.UUID
 
 func (m *mockPostprocessADRRepo) UpdateStatus(context.Context, uuid.UUID, uuid.UUID, domain.ADRStatus) error {
 	return nil
-}
-
-func (m *mockPostprocessADRRepo) NextSequence(_ context.Context, _ uuid.UUID) (int, error) {
-	if m.nextSeqErr != nil {
-		return 0, m.nextSeqErr
-	}
-	seq := m.nextSeq
-	m.nextSeq++
-	return seq, nil
 }
 
 // --- mock session repository (unused by PostProcessor but required for NewPostProcessor) ---
@@ -178,7 +167,7 @@ func TestExtractImplicitADRs_PatternMatching(t *testing.T) {
 			t.Parallel()
 			ctx := t.Context()
 
-			adrRepo := &mockPostprocessADRRepo{nextSeq: 1}
+			adrRepo := &mockPostprocessADRRepo{}
 			sessRepo := &mockAgentSessionRepo{}
 			pp := agent.NewPostProcessor(adrRepo, sessRepo)
 
@@ -203,7 +192,6 @@ func TestExtractImplicitADRs_DeduplicatesAgainstExisting(t *testing.T) {
 	sessionID := uuid.New()
 
 	adrRepo := &mockPostprocessADRRepo{
-		nextSeq: 10,
 		existing: []*domain.ADR{
 			{Title: "Use PostgreSQL instead of MySQL"},
 		},
@@ -221,29 +209,6 @@ func TestExtractImplicitADRs_DeduplicatesAgainstExisting(t *testing.T) {
 	assert.Empty(t, adrRepo.created)
 }
 
-func TestExtractImplicitADRs_NextSequenceError(t *testing.T) {
-	t.Parallel()
-	ctx := t.Context()
-
-	tenantID := uuid.New()
-	projectID := uuid.New()
-	sessionID := uuid.New()
-
-	adrRepo := &mockPostprocessADRRepo{
-		nextSeqErr: errors.New("sequence failure"),
-	}
-	sessRepo := &mockAgentSessionRepo{}
-	pp := agent.NewPostProcessor(adrRepo, sessRepo)
-
-	conversation := []string{"We decided to use Kafka for messaging."}
-
-	created, err := pp.ExtractImplicitADRs(ctx, sessionID, tenantID, projectID, conversation, "")
-
-	require.Error(t, err)
-	assert.Equal(t, 0, created)
-	assert.Contains(t, err.Error(), "next sequence")
-}
-
 func TestExtractImplicitADRs_CreateError(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
@@ -253,7 +218,6 @@ func TestExtractImplicitADRs_CreateError(t *testing.T) {
 	sessionID := uuid.New()
 
 	adrRepo := &mockPostprocessADRRepo{
-		nextSeq:   1,
 		createErr: errors.New("write failure"),
 	}
 	sessRepo := &mockAgentSessionRepo{}
@@ -299,7 +263,7 @@ func TestExtractImplicitADRs_ADRFieldsPopulatedCorrectly(t *testing.T) {
 	projectID := uuid.New()
 	sessionID := uuid.New()
 
-	adrRepo := &mockPostprocessADRRepo{nextSeq: 7}
+	adrRepo := &mockPostprocessADRRepo{}
 	sessRepo := &mockAgentSessionRepo{}
 	pp := agent.NewPostProcessor(adrRepo, sessRepo)
 
@@ -314,7 +278,7 @@ func TestExtractImplicitADRs_ADRFieldsPopulatedCorrectly(t *testing.T) {
 	adr := adrRepo.created[0]
 	assert.Equal(t, tenantID, adr.TenantID)
 	assert.Equal(t, projectID, adr.ProjectID)
-	assert.Equal(t, 7, adr.Sequence)
+	assert.Equal(t, 0, adr.Sequence) // sequence allocated atomically by the store
 	assert.Equal(t, domain.ADRStatusDraft, adr.Status)
 	assert.NotEqual(t, uuid.Nil, adr.ID)
 	assert.Equal(t, &sessionID, adr.AgentSessionID)

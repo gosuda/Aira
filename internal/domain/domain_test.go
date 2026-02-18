@@ -304,6 +304,55 @@ func TestHITLStatusConstants(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// 4a. ADR status validation — ValidateStatus.
+// ---------------------------------------------------------------------------
+
+func TestValidateADRStatus_KnownStatuses(t *testing.T) {
+	t.Parallel()
+
+	// Hardcoded canonical table — NOT derived from ValidADRStatuses.
+	known := []struct {
+		status domain.ADRStatus
+		label  string
+	}{
+		{domain.ADRStatusDraft, "draft"},
+		{domain.ADRStatusProposed, "proposed"},
+		{domain.ADRStatusAccepted, "accepted"},
+		{domain.ADRStatusRejected, "rejected"},
+		{domain.ADRStatusDeprecated, "deprecated"},
+	}
+
+	for _, k := range known {
+		t.Run("valid_"+k.label, func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, domain.ValidateStatus(k.status))
+		})
+	}
+}
+
+func TestValidateADRStatus_UnknownStatuses(t *testing.T) {
+	t.Parallel()
+
+	unknown := []domain.ADRStatus{"", "archived", "superseded", "DRAFT", "Draft"}
+	for _, s := range unknown {
+		t.Run("invalid_"+string(s), func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, domain.ValidateStatus(s))
+		})
+	}
+}
+
+func TestValidADRStatuses_Count(t *testing.T) {
+	t.Parallel()
+	// Guard against adding a status to the enum without updating ValidADRStatuses.
+	assert.Len(t, domain.ValidADRStatuses, 5, "update this test when adding new ADR statuses")
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Status constants — string value regression guards.
+// ---------------------------------------------------------------------------
+
 func TestADRStatusConstants(t *testing.T) {
 	t.Parallel()
 

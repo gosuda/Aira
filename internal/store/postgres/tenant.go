@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -22,15 +21,10 @@ func NewTenantRepo(pool *pgxpool.Pool) *TenantRepo {
 }
 
 func (r *TenantRepo) Create(ctx context.Context, t *domain.Tenant) error {
-	settings, err := json.Marshal(t.Settings)
-	if err != nil {
-		return fmt.Errorf("tenantRepo.Create: marshal settings: %w", err)
-	}
-
-	_, err = r.pool.Exec(ctx,
+	_, err := r.pool.Exec(ctx,
 		`INSERT INTO tenants (id, name, slug, settings, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		t.ID, t.Name, t.Slug, settings, t.CreatedAt, t.UpdatedAt,
+		t.ID, t.Name, t.Slug, t.Settings, t.CreatedAt, t.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("tenantRepo.Create: %w", err)
@@ -41,13 +35,12 @@ func (r *TenantRepo) Create(ctx context.Context, t *domain.Tenant) error {
 
 func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tenant, error) {
 	var t domain.Tenant
-	var settings []byte
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, name, slug, settings, created_at, updated_at
 		 FROM tenants WHERE id = $1`,
 		id,
-	).Scan(&t.ID, &t.Name, &t.Slug, &settings, &t.CreatedAt, &t.UpdatedAt)
+	).Scan(&t.ID, &t.Name, &t.Slug, &t.Settings, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("tenantRepo.GetByID: %w", domain.ErrNotFound)
 	}
@@ -55,23 +48,17 @@ func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tenant,
 		return nil, fmt.Errorf("tenantRepo.GetByID: %w", err)
 	}
 
-	err = json.Unmarshal(settings, &t.Settings)
-	if err != nil {
-		return nil, fmt.Errorf("tenantRepo.GetByID: unmarshal settings: %w", err)
-	}
-
 	return &t, nil
 }
 
 func (r *TenantRepo) GetBySlug(ctx context.Context, slug string) (*domain.Tenant, error) {
 	var t domain.Tenant
-	var settings []byte
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, name, slug, settings, created_at, updated_at
 		 FROM tenants WHERE slug = $1`,
 		slug,
-	).Scan(&t.ID, &t.Name, &t.Slug, &settings, &t.CreatedAt, &t.UpdatedAt)
+	).Scan(&t.ID, &t.Name, &t.Slug, &t.Settings, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("tenantRepo.GetBySlug: %w", domain.ErrNotFound)
 	}
@@ -79,24 +66,14 @@ func (r *TenantRepo) GetBySlug(ctx context.Context, slug string) (*domain.Tenant
 		return nil, fmt.Errorf("tenantRepo.GetBySlug: %w", err)
 	}
 
-	err = json.Unmarshal(settings, &t.Settings)
-	if err != nil {
-		return nil, fmt.Errorf("tenantRepo.GetBySlug: unmarshal settings: %w", err)
-	}
-
 	return &t, nil
 }
 
 func (r *TenantRepo) Update(ctx context.Context, t *domain.Tenant) error {
-	settings, err := json.Marshal(t.Settings)
-	if err != nil {
-		return fmt.Errorf("tenantRepo.Update: marshal settings: %w", err)
-	}
-
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE tenants SET name = $1, slug = $2, settings = $3, updated_at = now()
 		 WHERE id = $4`,
-		t.Name, t.Slug, settings, t.ID,
+		t.Name, t.Slug, t.Settings, t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("tenantRepo.Update: %w", err)
@@ -121,15 +98,10 @@ func (r *TenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 	var tenants []*domain.Tenant
 	for rows.Next() {
 		var t domain.Tenant
-		var settings []byte
 
-		err = rows.Scan(&t.ID, &t.Name, &t.Slug, &settings, &t.CreatedAt, &t.UpdatedAt)
+		err = rows.Scan(&t.ID, &t.Name, &t.Slug, &t.Settings, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("tenantRepo.List: scan: %w", err)
-		}
-		err = json.Unmarshal(settings, &t.Settings)
-		if err != nil {
-			return nil, fmt.Errorf("tenantRepo.List: unmarshal settings: %w", err)
 		}
 
 		tenants = append(tenants, &t)
