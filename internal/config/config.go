@@ -24,7 +24,7 @@ type DatabaseConfig struct {
 	Host     string
 	Port     int
 	User     string
-	Password string
+	Password string //nolint:gosec // G117: DB connection config
 	DBName   string
 	SSLMode  string
 	MaxConns int
@@ -33,13 +33,13 @@ type DatabaseConfig struct {
 // RedisConfig holds Redis connection settings.
 type RedisConfig struct {
 	Addr     string
-	Password string
+	Password string //nolint:gosec // G117: Redis connection config
 	DB       int
 }
 
 // JWTConfig holds JWT authentication settings.
 type JWTConfig struct {
-	Secret     string
+	Secret     string //nolint:gosec // G117: JWT signing secret config
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 }

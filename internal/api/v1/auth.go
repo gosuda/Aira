@@ -16,7 +16,7 @@ type RegisterInput struct {
 	Body struct {
 		TenantSlug string `json:"tenant_slug" minLength:"1" maxLength:"63" doc:"Tenant slug"`
 		Email      string `json:"email" minLength:"3" maxLength:"255" doc:"User email"`
-		Password   string `json:"password" minLength:"8" maxLength:"128" doc:"Password"`
+		Password   string `json:"password" minLength:"8" maxLength:"128" doc:"Password"` //nolint:gosec // G117: login credential DTO
 		Name       string `json:"name" minLength:"1" maxLength:"255" doc:"Display name"`
 	}
 }
@@ -24,8 +24,8 @@ type RegisterInput struct {
 type RegisterOutput struct {
 	Body struct {
 		User         *domain.User `json:"user"`
-		AccessToken  string       `json:"access_token"`
-		RefreshToken string       `json:"refresh_token"`
+		AccessToken  string       `json:"access_token"`  //nolint:gosec // G117: auth response DTO
+		RefreshToken string       `json:"refresh_token"` //nolint:gosec // G117: auth response DTO
 	}
 }
 
@@ -33,26 +33,26 @@ type LoginInput struct {
 	Body struct {
 		TenantSlug string `json:"tenant_slug" minLength:"1" maxLength:"63" doc:"Tenant slug"`
 		Email      string `json:"email" minLength:"3" maxLength:"255" doc:"User email"`
-		Password   string `json:"password" minLength:"1" maxLength:"128" doc:"Password"`
+		Password   string `json:"password" minLength:"1" maxLength:"128" doc:"Password"` //nolint:gosec // G117: login credential DTO
 	}
 }
 
 type LoginOutput struct {
 	Body struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
+		AccessToken  string `json:"access_token"`  //nolint:gosec // G117: auth response DTO
+		RefreshToken string `json:"refresh_token"` //nolint:gosec // G117: auth response DTO
 	}
 }
 
 type RefreshInput struct {
 	Body struct {
-		RefreshToken string `json:"refresh_token" minLength:"1" doc:"Refresh token"`
+		RefreshToken string `json:"refresh_token" minLength:"1" doc:"Refresh token"` //nolint:gosec // G117: token refresh DTO
 	}
 }
 
 type RefreshOutput struct {
 	Body struct {
-		AccessToken string `json:"access_token"`
+		AccessToken string `json:"access_token"` //nolint:gosec // G117: auth response DTO
 	}
 }
 

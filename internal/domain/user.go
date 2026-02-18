@@ -24,8 +24,8 @@ type UserOAuthLink struct {
 	UserID       uuid.UUID
 	Provider     string // "google", "github", "slack", "discord"
 	ProviderID   string
-	AccessToken  string // encrypted
-	RefreshToken string // encrypted
+	AccessToken  string // encrypted //nolint:gosec // G117: OAuth token storage
+	RefreshToken string // encrypted //nolint:gosec // G117: OAuth token storage
 	CreatedAt    time.Time
 }
 

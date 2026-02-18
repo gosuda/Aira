@@ -31,7 +31,7 @@ type OAuthUserInfo struct {
 type OAuthProvider struct {
 	Name         string
 	ClientID     string
-	ClientSecret string
+	ClientSecret string //nolint:gosec // G117: OAuth provider config
 	AuthURL      string
 	TokenURL     string
 	UserInfoURL  string
