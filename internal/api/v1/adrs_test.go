@@ -89,6 +89,10 @@ func TestListADRs(t *testing.T) {
 		resp := api.GetCtx(ctx, "/adrs?project_id="+projectID.String())
 
 		assert.Equal(t, http.StatusInternalServerError, resp.Code)
+
+		var errBody map[string]any
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&errBody))
+		assert.EqualValues(t, http.StatusInternalServerError, errBody["status"])
 	})
 }
 
@@ -185,6 +189,7 @@ func TestUpdateADRStatus(t *testing.T) {
 	t.Run("happy_path", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			adrs: &mockADRRepo{
@@ -199,6 +204,7 @@ func TestUpdateADRStatus(t *testing.T) {
 					}, nil
 				},
 				updateStatusFunc: func(_ context.Context, tid, id uuid.UUID, status domain.ADRStatus) error {
+					updateStatusCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, adrID, id)
 					assert.Equal(t, domain.ADRStatusProposed, status)
@@ -214,6 +220,7 @@ func TestUpdateADRStatus(t *testing.T) {
 		})
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, updateStatusCalled, "UpdateStatus must be invoked")
 
 		var body domain.ADR
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -290,6 +297,7 @@ func TestUpdateADRStatus(t *testing.T) {
 	t.Run("invalid_status", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			adrs: &mockADRRepo{
@@ -299,6 +307,10 @@ func TestUpdateADRStatus(t *testing.T) {
 						Status:    domain.ADRStatusDraft,
 						CreatedAt: now, UpdatedAt: now,
 					}, nil
+				},
+				updateStatusFunc: func(_ context.Context, _, _ uuid.UUID, _ domain.ADRStatus) error {
+					updateStatusCalled = true
+					return nil
 				},
 			},
 		}
@@ -310,6 +322,7 @@ func TestUpdateADRStatus(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.False(t, updateStatusCalled, "UpdateStatus must NOT be called for unknown status")
 
 		var errBody map[string]any
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&errBody))
@@ -319,6 +332,7 @@ func TestUpdateADRStatus(t *testing.T) {
 	t.Run("invalid_transition", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			adrs: &mockADRRepo{
@@ -328,6 +342,10 @@ func TestUpdateADRStatus(t *testing.T) {
 						Status:    domain.ADRStatusDraft,
 						CreatedAt: now, UpdatedAt: now,
 					}, nil
+				},
+				updateStatusFunc: func(_ context.Context, _, _ uuid.UUID, _ domain.ADRStatus) error {
+					updateStatusCalled = true
+					return nil
 				},
 			},
 		}
@@ -340,6 +358,7 @@ func TestUpdateADRStatus(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.False(t, updateStatusCalled, "UpdateStatus must NOT be called for invalid transition")
 
 		var errBody map[string]any
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&errBody))

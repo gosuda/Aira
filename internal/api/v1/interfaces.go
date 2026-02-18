@@ -22,7 +22,7 @@ type DataStore interface {
 // *auth.Service satisfies this interface.
 type AuthService interface {
 	Register(ctx context.Context, tenantID uuid.UUID, email, password, name string) (*domain.User, error)
-	Login(ctx context.Context, tenantID uuid.UUID, email, password string) (string, string, error)
+	Login(ctx context.Context, tenantID uuid.UUID, email, password string) (accessToken, refreshToken string, err error)
 	RefreshToken(ctx context.Context, refreshToken string) (string, error)
 }
 

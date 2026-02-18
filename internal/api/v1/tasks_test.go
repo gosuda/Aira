@@ -31,6 +31,7 @@ func TestCreateTask(t *testing.T) {
 	t.Run("happy_path", func(t *testing.T) {
 		t.Parallel()
 
+		var createCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			projects: &mockProjectRepo{
@@ -42,6 +43,7 @@ func TestCreateTask(t *testing.T) {
 			},
 			tasks: &mockTaskRepo{
 				createFunc: func(_ context.Context, task *domain.Task) error {
+					createCalled = true
 					assert.Equal(t, tenantID, task.TenantID)
 					assert.Equal(t, projectID, task.ProjectID)
 					assert.Equal(t, "Implement login", task.Title)
@@ -62,6 +64,7 @@ func TestCreateTask(t *testing.T) {
 		})
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, createCalled, "store.Tasks().Create must be invoked")
 
 		var body domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -77,6 +80,7 @@ func TestCreateTask(t *testing.T) {
 	t.Run("happy_path_with_adr", func(t *testing.T) {
 		t.Parallel()
 
+		var adrLookedUp, createCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			projects: &mockProjectRepo{
@@ -86,6 +90,7 @@ func TestCreateTask(t *testing.T) {
 			},
 			adrs: &mockADRRepo{
 				getByIDFunc: func(_ context.Context, tid, aid uuid.UUID) (*domain.ADR, error) {
+					adrLookedUp = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, adrID, aid)
 					return &domain.ADR{ID: adrID}, nil
@@ -93,6 +98,7 @@ func TestCreateTask(t *testing.T) {
 			},
 			tasks: &mockTaskRepo{
 				createFunc: func(_ context.Context, task *domain.Task) error {
+					createCalled = true
 					require.NotNil(t, task.ADRID)
 					assert.Equal(t, adrID, *task.ADRID)
 					return nil
@@ -109,6 +115,8 @@ func TestCreateTask(t *testing.T) {
 		})
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, adrLookedUp, "ADR must be looked up when adr_id is provided")
+		assert.True(t, createCalled, "store.Tasks().Create must be invoked")
 	})
 
 	t.Run("missing_tenant", func(t *testing.T) {
@@ -232,21 +240,27 @@ func TestListTasks(t *testing.T) {
 	projectID := uuid.New()
 	now := time.Now()
 
-	sampleTasks := []*domain.Task{
-		{ID: uuid.New(), TenantID: tenantID, ProjectID: projectID, Title: "Task A", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New(), TenantID: tenantID, ProjectID: projectID, Title: "Task B", Status: domain.TaskStatusInProgress, CreatedAt: now, UpdatedAt: now},
+	// Factory creates fresh task slices per subtest to avoid shared-pointer races with t.Parallel().
+	makeSampleTasks := func() []*domain.Task {
+		return []*domain.Task{
+			{ID: uuid.New(), TenantID: tenantID, ProjectID: projectID, Title: "Task A", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.New(), TenantID: tenantID, ProjectID: projectID, Title: "Task B", Status: domain.TaskStatusInProgress, CreatedAt: now, UpdatedAt: now},
+		}
 	}
 
 	t.Run("happy_path_all", func(t *testing.T) {
 		t.Parallel()
 
+		var listCalled bool
+		tasks := makeSampleTasks()
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
 				listByProjectFunc: func(_ context.Context, tid, pid uuid.UUID) ([]*domain.Task, error) {
+					listCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, projectID, pid)
-					return sampleTasks, nil
+					return tasks, nil
 				},
 			},
 		}
@@ -256,6 +270,7 @@ func TestListTasks(t *testing.T) {
 		resp := api.GetCtx(ctx, "/tasks?project_id="+projectID.String())
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, listCalled, "ListByProject must be invoked")
 
 		var body []*domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -267,15 +282,17 @@ func TestListTasks(t *testing.T) {
 	t.Run("filtered_by_status", func(t *testing.T) {
 		t.Parallel()
 
+		var listByStatusCalled bool
+		tasks := makeSampleTasks()
 		_, api := humatest.New(t)
-		filtered := []*domain.Task{sampleTasks[0]}
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
 				listByStatusFunc: func(_ context.Context, tid, pid uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error) {
+					listByStatusCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, projectID, pid)
 					assert.Equal(t, domain.TaskStatusBacklog, status)
-					return filtered, nil
+					return []*domain.Task{tasks[0]}, nil
 				},
 			},
 		}
@@ -285,6 +302,7 @@ func TestListTasks(t *testing.T) {
 		resp := api.GetCtx(ctx, "/tasks?project_id="+projectID.String()+"&status=backlog")
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, listByStatusCalled, "ListByStatus must be invoked when status filter is set")
 
 		var body []*domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -503,6 +521,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 	t.Run("happy_path", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
@@ -514,6 +533,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 					}, nil
 				},
 				updateStatusFunc: func(_ context.Context, tid, id uuid.UUID, status domain.TaskStatus) error {
+					updateStatusCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, taskID, id)
 					assert.Equal(t, domain.TaskStatusInProgress, status)
@@ -529,6 +549,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 		})
 
 		require.Equal(t, http.StatusOK, resp.Code)
+		assert.True(t, updateStatusCalled, "UpdateStatus must be invoked")
 
 		var body domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -538,6 +559,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 	t.Run("invalid_status", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
@@ -547,6 +569,10 @@ func TestTransitionTaskStatus(t *testing.T) {
 						Status:    domain.TaskStatusBacklog,
 						CreatedAt: now, UpdatedAt: now,
 					}, nil
+				},
+				updateStatusFunc: func(_ context.Context, _, _ uuid.UUID, _ domain.TaskStatus) error {
+					updateStatusCalled = true
+					return nil
 				},
 			},
 		}
@@ -558,6 +584,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.False(t, updateStatusCalled, "UpdateStatus must NOT be called for invalid status")
 
 		var errBody map[string]any
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&errBody))
@@ -567,6 +594,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 	t.Run("invalid_transition", func(t *testing.T) {
 		t.Parallel()
 
+		var updateStatusCalled bool
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
@@ -576,6 +604,10 @@ func TestTransitionTaskStatus(t *testing.T) {
 						Status:    domain.TaskStatusBacklog,
 						CreatedAt: now, UpdatedAt: now,
 					}, nil
+				},
+				updateStatusFunc: func(_ context.Context, _, _ uuid.UUID, _ domain.TaskStatus) error {
+					updateStatusCalled = true
+					return nil
 				},
 			},
 		}
@@ -588,6 +620,7 @@ func TestTransitionTaskStatus(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.False(t, updateStatusCalled, "UpdateStatus must NOT be called for invalid transition")
 
 		var errBody map[string]any
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&errBody))

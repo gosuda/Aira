@@ -17,6 +17,15 @@ import (
 	"github.com/gosuda/aira/internal/domain"
 )
 
+// collectIDs extracts IDs from a slice of tasks for order-independent comparison.
+func collectIDs(tasks []domain.Task) []uuid.UUID {
+	ids := make([]uuid.UUID, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+	return ids
+}
+
 // ---------------------------------------------------------------------------
 // GET /boards/{projectID}
 // ---------------------------------------------------------------------------
@@ -31,13 +40,20 @@ func TestGetBoard(t *testing.T) {
 		pid := uuid.New()
 		now := time.Now().Truncate(time.Second)
 
+		backlog1 := uuid.New()
+		backlog2 := uuid.New()
+		inProg := uuid.New()
+		review := uuid.New()
+		done1 := uuid.New()
+		done2 := uuid.New()
+
 		tasks := []*domain.Task{
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-backlog-1", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-backlog-2", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-in-progress", Status: domain.TaskStatusInProgress, CreatedAt: now, UpdatedAt: now},
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-review", Status: domain.TaskStatusReview, CreatedAt: now, UpdatedAt: now},
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-done-1", Status: domain.TaskStatusDone, CreatedAt: now, UpdatedAt: now},
-			{ID: uuid.New(), TenantID: tid, ProjectID: pid, Title: "task-done-2", Status: domain.TaskStatusDone, CreatedAt: now, UpdatedAt: now},
+			{ID: backlog1, TenantID: tid, ProjectID: pid, Title: "task-backlog-1", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
+			{ID: backlog2, TenantID: tid, ProjectID: pid, Title: "task-backlog-2", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
+			{ID: inProg, TenantID: tid, ProjectID: pid, Title: "task-in-progress", Status: domain.TaskStatusInProgress, CreatedAt: now, UpdatedAt: now},
+			{ID: review, TenantID: tid, ProjectID: pid, Title: "task-review", Status: domain.TaskStatusReview, CreatedAt: now, UpdatedAt: now},
+			{ID: done1, TenantID: tid, ProjectID: pid, Title: "task-done-1", Status: domain.TaskStatusDone, CreatedAt: now, UpdatedAt: now},
+			{ID: done2, TenantID: tid, ProjectID: pid, Title: "task-done-2", Status: domain.TaskStatusDone, CreatedAt: now, UpdatedAt: now},
 		}
 
 		_, api := humatest.New(t)
@@ -65,15 +81,62 @@ func TestGetBoard(t *testing.T) {
 		err := json.Unmarshal(resp.Body.Bytes(), &board)
 		require.NoError(t, err)
 
+		// Assert column sizes.
 		assert.Len(t, board.Backlog, 2, "backlog should have 2 tasks")
 		assert.Len(t, board.InProgress, 1, "in_progress should have 1 task")
 		assert.Len(t, board.Review, 1, "review should have 1 task")
 		assert.Len(t, board.Done, 2, "done should have 2 tasks")
 
-		assert.Equal(t, "task-backlog-1", board.Backlog[0].Title)
-		assert.Equal(t, "task-in-progress", board.InProgress[0].Title)
-		assert.Equal(t, "task-review", board.Review[0].Title)
-		assert.Equal(t, "task-done-1", board.Done[0].Title)
+		// Assert by IDs (order-independent within columns).
+		assert.ElementsMatch(t, []uuid.UUID{backlog1, backlog2}, collectIDs(board.Backlog))
+		assert.ElementsMatch(t, []uuid.UUID{inProg}, collectIDs(board.InProgress))
+		assert.ElementsMatch(t, []uuid.UUID{review}, collectIDs(board.Review))
+		assert.ElementsMatch(t, []uuid.UUID{done1, done2}, collectIDs(board.Done))
+	})
+
+	t.Run("unknown_status_silently_dropped", func(t *testing.T) {
+		t.Parallel()
+
+		tid := uuid.New()
+		pid := uuid.New()
+		now := time.Now().Truncate(time.Second)
+
+		knownID := uuid.New()
+		unknownID := uuid.New()
+
+		tasks := []*domain.Task{
+			{ID: knownID, TenantID: tid, ProjectID: pid, Title: "known", Status: domain.TaskStatusBacklog, CreatedAt: now, UpdatedAt: now},
+			{ID: unknownID, TenantID: tid, ProjectID: pid, Title: "unknown-status", Status: domain.TaskStatus("archived"), CreatedAt: now, UpdatedAt: now},
+		}
+
+		_, api := humatest.New(t)
+		store := &mockDataStore{
+			tasks: &mockTaskRepo{
+				listByProjectFunc: func(_ context.Context, _, _ uuid.UUID) ([]*domain.Task, error) {
+					return tasks, nil
+				},
+			},
+		}
+		v1.RegisterBoardRoutes(api, store)
+
+		resp := api.GetCtx(tenantCtx(tid), "/boards/"+pid.String())
+
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		var board struct {
+			Backlog    []domain.Task `json:"backlog"`
+			InProgress []domain.Task `json:"in_progress"`
+			Review     []domain.Task `json:"review"`
+			Done       []domain.Task `json:"done"`
+		}
+		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &board))
+
+		// The known task appears in backlog; the unknown-status task is dropped.
+		assert.Len(t, board.Backlog, 1)
+		assert.Equal(t, knownID, board.Backlog[0].ID)
+		assert.Empty(t, board.InProgress)
+		assert.Empty(t, board.Review)
+		assert.Empty(t, board.Done)
 	})
 
 	t.Run("empty_board", func(t *testing.T) {
