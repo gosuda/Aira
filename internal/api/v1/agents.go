@@ -42,6 +42,8 @@ type CancelAgentOutput struct {
 
 type ListAgentSessionsInput struct {
 	ProjectID uuid.UUID `query:"project_id" required:"true" doc:"Project ID"`
+	Limit     int       `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Max results"`
+	Offset    int       `query:"offset" minimum:"0" default:"0" doc:"Offset for pagination"`
 }
 
 type ListAgentSessionsOutput struct {
@@ -144,7 +146,7 @@ func RegisterAgentRoutes(api huma.API, store DataStore, orchestrator AgentOrches
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
-		sessions, err := store.AgentSessions().ListByProject(ctx, tenantID, input.ProjectID)
+		sessions, err := store.AgentSessions().ListByProjectPaginated(ctx, tenantID, input.ProjectID, input.Limit, input.Offset)
 		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to list agent sessions", err)
 		}

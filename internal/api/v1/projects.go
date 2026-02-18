@@ -27,7 +27,10 @@ type CreateProjectOutput struct {
 	Body *domain.Project
 }
 
-type ListProjectsInput struct{}
+type ListProjectsInput struct {
+	Limit  int `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Max results"`
+	Offset int `query:"offset" minimum:"0" default:"0" doc:"Offset for pagination"`
+}
 
 type ListProjectsOutput struct {
 	Body []*domain.Project
@@ -94,13 +97,13 @@ func RegisterProjectRoutes(api huma.API, store DataStore) {
 		Path:        "/projects",
 		Summary:     "List projects in current tenant",
 		Tags:        []string{"Projects"},
-	}, func(ctx context.Context, _ *ListProjectsInput) (*ListProjectsOutput, error) {
+	}, func(ctx context.Context, input *ListProjectsInput) (*ListProjectsOutput, error) {
 		tenantID, ok := middleware.TenantIDFromContext(ctx)
 		if !ok {
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
-		projects, err := store.Projects().List(ctx, tenantID)
+		projects, err := store.Projects().ListPaginated(ctx, tenantID, input.Limit, input.Offset)
 		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to list projects", err)
 		}

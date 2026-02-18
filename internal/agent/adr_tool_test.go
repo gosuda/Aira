@@ -36,6 +36,10 @@ func (m *mockADRRepository) ListByProject(context.Context, uuid.UUID, uuid.UUID)
 	return nil, nil
 }
 
+func (m *mockADRRepository) ListByProjectPaginated(context.Context, uuid.UUID, uuid.UUID, int, int) ([]*domain.ADR, error) {
+	return nil, nil
+}
+
 func (m *mockADRRepository) UpdateStatus(context.Context, uuid.UUID, uuid.UUID, domain.ADRStatus) error {
 	return nil
 }
@@ -54,6 +58,9 @@ func (m *mockProjectRepository) GetByID(_ context.Context, _, _ uuid.UUID) (*dom
 }
 func (m *mockProjectRepository) Update(context.Context, *domain.Project) error { return nil }
 func (m *mockProjectRepository) List(context.Context, uuid.UUID) ([]*domain.Project, error) {
+	return nil, nil
+}
+func (m *mockProjectRepository) ListPaginated(context.Context, uuid.UUID, int, int) ([]*domain.Project, error) {
 	return nil, nil
 }
 func (m *mockProjectRepository) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }

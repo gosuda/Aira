@@ -30,6 +30,8 @@ type CreateTaskOutput struct {
 type ListTasksInput struct {
 	ProjectID uuid.UUID `query:"project_id" required:"true" doc:"Project ID"`
 	Status    string    `query:"status" doc:"Filter by status"`
+	Limit     int       `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Max results"`
+	Offset    int       `query:"offset" minimum:"0" default:"0" doc:"Offset for pagination"`
 }
 
 type ListTasksOutput struct {
@@ -145,7 +147,7 @@ func RegisterTaskRoutes(api huma.API, store DataStore) {
 			return &ListTasksOutput{Body: tasks}, nil
 		}
 
-		tasks, err := store.Tasks().ListByProject(ctx, tenantID, input.ProjectID)
+		tasks, err := store.Tasks().ListByProjectPaginated(ctx, tenantID, input.ProjectID, input.Limit, input.Offset)
 		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to list tasks", err)
 		}

@@ -155,6 +155,47 @@ func (r *ADRRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.UU
 	return adrs, nil
 }
 
+func (r *ADRRepo) ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.ADR, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, tenant_id, project_id, sequence, title, status, context, decision,
+		        drivers, options, consequences, created_by, agent_session_id, created_at, updated_at
+		 FROM adrs WHERE tenant_id = $1 AND project_id = $2
+		 ORDER BY sequence DESC
+		 LIMIT $3 OFFSET $4`,
+		tenantID, projectID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("adrRepo.ListByProjectPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	var adrs []*domain.ADR
+	for rows.Next() {
+		var adr domain.ADR
+		var drivers, options, consequences []byte
+
+		err = rows.Scan(
+			&adr.ID, &adr.TenantID, &adr.ProjectID, &adr.Sequence, &adr.Title, &adr.Status,
+			&adr.Context, &adr.Decision, &drivers, &options, &consequences,
+			&adr.CreatedBy, &adr.AgentSessionID, &adr.CreatedAt, &adr.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("adrRepo.ListByProjectPaginated: scan: %w", err)
+		}
+		err = unmarshalADRJSON(&adr, drivers, options, consequences)
+		if err != nil {
+			return nil, fmt.Errorf("adrRepo.ListByProjectPaginated: %w", err)
+		}
+		adrs = append(adrs, &adr)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("adrRepo.ListByProjectPaginated: rows: %w", err)
+	}
+
+	return adrs, nil
+}
+
 func (r *ADRRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.ADRStatus) error {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE adrs SET status = $1, updated_at = now() WHERE tenant_id = $2 AND id = $3`,

@@ -46,6 +46,7 @@ type ADRRepository interface {
 	Create(ctx context.Context, adr *ADR) error
 	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*ADR, error)
 	ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*ADR, error)
+	ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*ADR, error)
 	UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status ADRStatus) error
 }
 

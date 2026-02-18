@@ -345,9 +345,11 @@ func TestListAgentSessions(t *testing.T) {
 		s2 := makeSession(tenantID, projectID)
 
 		store.agentSessions = &mockAgentSessionRepo{
-			listByProjectFunc: func(_ context.Context, tid, pid uuid.UUID) ([]*domain.AgentSession, error) {
+			listByProjectPaginatedFunc: func(_ context.Context, tid, pid uuid.UUID, limit, offset int) ([]*domain.AgentSession, error) {
 				assert.Equal(t, tenantID, tid)
 				assert.Equal(t, projectID, pid)
+				assert.Equal(t, 50, limit, "default limit must be 50")
+				assert.Equal(t, 0, offset, "default offset must be 0")
 				return []*domain.AgentSession{s1, s2}, nil
 			},
 		}
@@ -370,7 +372,7 @@ func TestListAgentSessions(t *testing.T) {
 		api, store, _ := newAgentTestAPI(t)
 
 		store.agentSessions = &mockAgentSessionRepo{
-			listByProjectFunc: func(_ context.Context, _, _ uuid.UUID) ([]*domain.AgentSession, error) {
+			listByProjectPaginatedFunc: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]*domain.AgentSession, error) {
 				return nil, errors.New("connection refused")
 			},
 		}

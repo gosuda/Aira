@@ -41,6 +41,10 @@ func (m *mockPostprocessADRRepo) ListByProject(_ context.Context, _, _ uuid.UUID
 	return m.existing, nil
 }
 
+func (m *mockPostprocessADRRepo) ListByProjectPaginated(context.Context, uuid.UUID, uuid.UUID, int, int) ([]*domain.ADR, error) {
+	return nil, nil
+}
+
 func (m *mockPostprocessADRRepo) UpdateStatus(context.Context, uuid.UUID, uuid.UUID, domain.ADRStatus) error {
 	return nil
 }

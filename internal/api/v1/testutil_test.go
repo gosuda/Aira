@@ -80,11 +80,12 @@ func (m *mockTenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 // ---------------------------------------------------------------------------
 
 type mockProjectRepo struct {
-	createFunc  func(ctx context.Context, p *domain.Project) error
-	getByIDFunc func(ctx context.Context, tenantID, id uuid.UUID) (*domain.Project, error)
-	updateFunc  func(ctx context.Context, p *domain.Project) error
-	listFunc    func(ctx context.Context, tenantID uuid.UUID) ([]*domain.Project, error)
-	deleteFunc  func(ctx context.Context, tenantID, id uuid.UUID) error
+	createFunc        func(ctx context.Context, p *domain.Project) error
+	getByIDFunc       func(ctx context.Context, tenantID, id uuid.UUID) (*domain.Project, error)
+	updateFunc        func(ctx context.Context, p *domain.Project) error
+	listFunc          func(ctx context.Context, tenantID uuid.UUID) ([]*domain.Project, error)
+	listPaginatedFunc func(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*domain.Project, error)
+	deleteFunc        func(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
 func (m *mockProjectRepo) Create(ctx context.Context, p *domain.Project) error {
@@ -103,6 +104,10 @@ func (m *mockProjectRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*doma
 	return m.listFunc(ctx, tenantID)
 }
 
+func (m *mockProjectRepo) ListPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*domain.Project, error) {
+	return m.listPaginatedFunc(ctx, tenantID, limit, offset)
+}
+
 func (m *mockProjectRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
 	return m.deleteFunc(ctx, tenantID, id)
 }
@@ -112,13 +117,14 @@ func (m *mockProjectRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) er
 // ---------------------------------------------------------------------------
 
 type mockTaskRepo struct {
-	createFunc        func(ctx context.Context, t *domain.Task) error
-	getByIDFunc       func(ctx context.Context, tenantID, id uuid.UUID) (*domain.Task, error)
-	listByProjectFunc func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.Task, error)
-	listByStatusFunc  func(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error)
-	updateStatusFunc  func(ctx context.Context, tenantID, id uuid.UUID, status domain.TaskStatus) error
-	updateFunc        func(ctx context.Context, t *domain.Task) error
-	deleteFunc        func(ctx context.Context, tenantID, id uuid.UUID) error
+	createFunc                 func(ctx context.Context, t *domain.Task) error
+	getByIDFunc                func(ctx context.Context, tenantID, id uuid.UUID) (*domain.Task, error)
+	listByProjectFunc          func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.Task, error)
+	listByProjectPaginatedFunc func(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.Task, error)
+	listByStatusFunc           func(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error)
+	updateStatusFunc           func(ctx context.Context, tenantID, id uuid.UUID, status domain.TaskStatus) error
+	updateFunc                 func(ctx context.Context, t *domain.Task) error
+	deleteFunc                 func(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
 func (m *mockTaskRepo) Create(ctx context.Context, t *domain.Task) error {
@@ -131,6 +137,10 @@ func (m *mockTaskRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*do
 
 func (m *mockTaskRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.Task, error) {
 	return m.listByProjectFunc(ctx, tenantID, projectID)
+}
+
+func (m *mockTaskRepo) ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.Task, error) {
+	return m.listByProjectPaginatedFunc(ctx, tenantID, projectID, limit, offset)
 }
 
 func (m *mockTaskRepo) ListByStatus(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error) {
@@ -154,10 +164,11 @@ func (m *mockTaskRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) error
 // ---------------------------------------------------------------------------
 
 type mockADRRepo struct {
-	createFunc        func(ctx context.Context, adr *domain.ADR) error
-	getByIDFunc       func(ctx context.Context, tenantID, id uuid.UUID) (*domain.ADR, error)
-	listByProjectFunc func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.ADR, error)
-	updateStatusFunc  func(ctx context.Context, tenantID, id uuid.UUID, status domain.ADRStatus) error
+	createFunc                 func(ctx context.Context, adr *domain.ADR) error
+	getByIDFunc                func(ctx context.Context, tenantID, id uuid.UUID) (*domain.ADR, error)
+	listByProjectFunc          func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.ADR, error)
+	listByProjectPaginatedFunc func(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.ADR, error)
+	updateStatusFunc           func(ctx context.Context, tenantID, id uuid.UUID, status domain.ADRStatus) error
 }
 
 func (m *mockADRRepo) Create(ctx context.Context, adr *domain.ADR) error {
@@ -170,6 +181,10 @@ func (m *mockADRRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*dom
 
 func (m *mockADRRepo) ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.ADR, error) {
 	return m.listByProjectFunc(ctx, tenantID, projectID)
+}
+
+func (m *mockADRRepo) ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.ADR, error) {
+	return m.listByProjectPaginatedFunc(ctx, tenantID, projectID, limit, offset)
 }
 
 func (m *mockADRRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.ADRStatus) error {

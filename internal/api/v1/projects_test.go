@@ -134,8 +134,10 @@ func TestListProjects(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			projects: &mockProjectRepo{
-				listFunc: func(_ context.Context, tenantID uuid.UUID) ([]*domain.Project, error) {
+				listPaginatedFunc: func(_ context.Context, tenantID uuid.UUID, limit, offset int) ([]*domain.Project, error) {
 					assert.Equal(t, tid, tenantID)
+					assert.Equal(t, 50, limit, "default limit must be 50")
+					assert.Equal(t, 0, offset, "default offset must be 0")
 					return projects, nil
 				},
 			},
@@ -161,7 +163,7 @@ func TestListProjects(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			projects: &mockProjectRepo{
-				listFunc: func(_ context.Context, _ uuid.UUID) ([]*domain.Project, error) {
+				listPaginatedFunc: func(_ context.Context, _ uuid.UUID, _, _ int) ([]*domain.Project, error) {
 					return nil, errors.New("db: timeout")
 				},
 			},

@@ -15,6 +15,8 @@ import (
 
 type ListADRsInput struct {
 	ProjectID uuid.UUID `query:"project_id" required:"true" doc:"Project ID"`
+	Limit     int       `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Max results"`
+	Offset    int       `query:"offset" minimum:"0" default:"0" doc:"Offset for pagination"`
 }
 
 type ListADRsOutput struct {
@@ -69,7 +71,7 @@ func RegisterADRRoutes(api huma.API, store DataStore) {
 			return nil, huma.Error403Forbidden("missing tenant context")
 		}
 
-		adrs, err := store.ADRs().ListByProject(ctx, tenantID, input.ProjectID)
+		adrs, err := store.ADRs().ListByProjectPaginated(ctx, tenantID, input.ProjectID, input.Limit, input.Offset)
 		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to list ADRs", err)
 		}

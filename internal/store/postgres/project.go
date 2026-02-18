@@ -96,6 +96,36 @@ func (r *ProjectRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.P
 	return projects, nil
 }
 
+func (r *ProjectRepo) ListPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*domain.Project, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, tenant_id, name, repo_url, branch, settings, created_at
+		 FROM projects WHERE tenant_id = $1 ORDER BY created_at
+		 LIMIT $2 OFFSET $3`,
+		tenantID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("projectRepo.ListPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	var projects []*domain.Project
+	for rows.Next() {
+		var p domain.Project
+
+		err = rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.RepoURL, &p.Branch, &p.Settings, &p.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("projectRepo.ListPaginated: scan: %w", err)
+		}
+		projects = append(projects, &p)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("projectRepo.ListPaginated: rows: %w", err)
+	}
+
+	return projects, nil
+}
+
 func (r *ProjectRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
 		`DELETE FROM projects WHERE tenant_id = $1 AND id = $2`,

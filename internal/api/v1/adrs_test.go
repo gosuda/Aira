@@ -49,9 +49,11 @@ func TestListADRs(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			adrs: &mockADRRepo{
-				listByProjectFunc: func(_ context.Context, tid, pid uuid.UUID) ([]*domain.ADR, error) {
+				listByProjectPaginatedFunc: func(_ context.Context, tid, pid uuid.UUID, limit, offset int) ([]*domain.ADR, error) {
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, projectID, pid)
+					assert.Equal(t, 50, limit, "default limit must be 50")
+					assert.Equal(t, 0, offset, "default offset must be 0")
 					return sampleADRs, nil
 				},
 			},
@@ -78,7 +80,7 @@ func TestListADRs(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			adrs: &mockADRRepo{
-				listByProjectFunc: func(_ context.Context, _, _ uuid.UUID) ([]*domain.ADR, error) {
+				listByProjectPaginatedFunc: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]*domain.ADR, error) {
 					return nil, errors.New("db connection refused")
 				},
 			},

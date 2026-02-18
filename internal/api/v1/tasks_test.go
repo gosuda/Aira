@@ -256,10 +256,12 @@ func TestListTasks(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
-				listByProjectFunc: func(_ context.Context, tid, pid uuid.UUID) ([]*domain.Task, error) {
+				listByProjectPaginatedFunc: func(_ context.Context, tid, pid uuid.UUID, limit, offset int) ([]*domain.Task, error) {
 					listCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, projectID, pid)
+					assert.Equal(t, 50, limit, "default limit must be 50")
+					assert.Equal(t, 0, offset, "default offset must be 0")
 					return tasks, nil
 				},
 			},
@@ -270,7 +272,7 @@ func TestListTasks(t *testing.T) {
 		resp := api.GetCtx(ctx, "/tasks?project_id="+projectID.String())
 
 		require.Equal(t, http.StatusOK, resp.Code)
-		assert.True(t, listCalled, "ListByProject must be invoked")
+		assert.True(t, listCalled, "ListByProjectPaginated must be invoked")
 
 		var body []*domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
@@ -316,7 +318,7 @@ func TestListTasks(t *testing.T) {
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
-				listByProjectFunc: func(_ context.Context, _, _ uuid.UUID) ([]*domain.Task, error) {
+				listByProjectPaginatedFunc: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]*domain.Task, error) {
 					return nil, errors.New("db timeout")
 				},
 			},

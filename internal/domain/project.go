@@ -52,5 +52,6 @@ type ProjectRepository interface {
 	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*Project, error)
 	Update(ctx context.Context, p *Project) error
 	List(ctx context.Context, tenantID uuid.UUID) ([]*Project, error)
+	ListPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*Project, error)
 	Delete(ctx context.Context, tenantID, id uuid.UUID) error
 }
