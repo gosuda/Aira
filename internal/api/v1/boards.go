@@ -9,7 +9,6 @@ import (
 
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type GetBoardInput struct {
@@ -27,7 +26,7 @@ type GetBoardOutput struct {
 	Body *BoardColumn
 }
 
-func RegisterBoardRoutes(api huma.API, store *postgres.Store) {
+func RegisterBoardRoutes(api huma.API, store DataStore) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-board",
 		Method:      http.MethodGet,

@@ -10,7 +10,6 @@ import (
 
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type CreateTenantInput struct {
@@ -30,7 +29,7 @@ type ListTenantsOutput struct {
 	Body []*domain.Tenant
 }
 
-func RegisterTenantRoutes(api huma.API, store *postgres.Store) {
+func RegisterTenantRoutes(api huma.API, store DataStore) {
 	huma.Register(api, huma.Operation{
 		OperationID: "create-tenant",
 		Method:      http.MethodPost,

@@ -12,7 +12,6 @@ import (
 
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type CreateProjectInput struct {
@@ -60,7 +59,7 @@ type DeleteProjectInput struct {
 	ID uuid.UUID `path:"id" doc:"Project ID"`
 }
 
-func RegisterProjectRoutes(api huma.API, store *postgres.Store) {
+func RegisterProjectRoutes(api huma.API, store DataStore) {
 	huma.Register(api, huma.Operation{
 		OperationID: "create-project",
 		Method:      http.MethodPost,

@@ -11,7 +11,6 @@ import (
 
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type ListADRsInput struct {
@@ -57,7 +56,7 @@ func isValidADRTransition(from, to domain.ADRStatus) bool {
 	return slices.Contains(allowed, to)
 }
 
-func RegisterADRRoutes(api huma.API, store *postgres.Store) {
+func RegisterADRRoutes(api huma.API, store DataStore) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-adrs",
 		Method:      http.MethodGet,

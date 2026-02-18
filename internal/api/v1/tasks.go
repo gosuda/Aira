@@ -11,7 +11,6 @@ import (
 
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type CreateTaskInput struct {
@@ -75,7 +74,7 @@ type DeleteTaskInput struct {
 	ID uuid.UUID `path:"id" doc:"Task ID"`
 }
 
-func RegisterTaskRoutes(api huma.API, store *postgres.Store) {
+func RegisterTaskRoutes(api huma.API, store DataStore) {
 	huma.Register(api, huma.Operation{
 		OperationID: "create-task",
 		Method:      http.MethodPost,

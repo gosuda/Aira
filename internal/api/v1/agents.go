@@ -11,7 +11,6 @@ import (
 	"github.com/gosuda/aira/internal/agent"
 	"github.com/gosuda/aira/internal/domain"
 	"github.com/gosuda/aira/internal/server/middleware"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type TriggerAgentInput struct {
@@ -49,7 +48,7 @@ type ListAgentSessionsOutput struct {
 	Body []*domain.AgentSession
 }
 
-func RegisterAgentRoutes(api huma.API, store *postgres.Store, orchestrator *agent.Orchestrator) {
+func RegisterAgentRoutes(api huma.API, store DataStore, orchestrator AgentOrchestrator) {
 	huma.Register(api, huma.Operation{
 		OperationID: "trigger-agent",
 		Method:      http.MethodPost,

@@ -9,7 +9,6 @@ import (
 
 	"github.com/gosuda/aira/internal/auth"
 	"github.com/gosuda/aira/internal/domain"
-	"github.com/gosuda/aira/internal/store/postgres"
 )
 
 type RegisterInput struct {
@@ -56,7 +55,7 @@ type RefreshOutput struct {
 	}
 }
 
-func RegisterAuthRoutes(api huma.API, store *postgres.Store, authSvc *auth.Service) {
+func RegisterAuthRoutes(api huma.API, store DataStore, authSvc AuthService) {
 	huma.Register(api, huma.Operation{
 		OperationID: "register",
 		Method:      http.MethodPost,
