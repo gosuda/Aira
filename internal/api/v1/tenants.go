@@ -23,7 +23,10 @@ type CreateTenantOutput struct {
 	Body *domain.Tenant
 }
 
-type ListTenantsInput struct{}
+type ListTenantsInput struct {
+	Limit  int `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Max results"`
+	Offset int `query:"offset" minimum:"0" default:"0" doc:"Offset for pagination"`
+}
 
 type ListTenantsOutput struct {
 	Body []*domain.Tenant
@@ -64,13 +67,13 @@ func RegisterTenantRoutes(api huma.API, store DataStore) {
 		Path:        "/tenants",
 		Summary:     "List all tenants",
 		Tags:        []string{"Tenants"},
-	}, func(ctx context.Context, _ *ListTenantsInput) (*ListTenantsOutput, error) {
+	}, func(ctx context.Context, input *ListTenantsInput) (*ListTenantsOutput, error) {
 		role, ok := middleware.RoleFromContext(ctx)
 		if !ok || role != "admin" {
 			return nil, huma.Error403Forbidden("admin role required")
 		}
 
-		tenants, err := store.Tenants().List(ctx)
+		tenants, err := store.Tenants().ListPaginated(ctx, input.Limit, input.Offset)
 		if err != nil {
 			return nil, huma.Error500InternalServerError("failed to list tenants", err)
 		}

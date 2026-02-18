@@ -23,4 +23,5 @@ type TenantRepository interface {
 	GetBySlug(ctx context.Context, slug string) (*Tenant, error)
 	Update(ctx context.Context, t *Tenant) error
 	List(ctx context.Context) ([]*Tenant, error)
+	ListPaginated(ctx context.Context, limit, offset int) ([]*Tenant, error)
 }

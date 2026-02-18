@@ -114,3 +114,34 @@ func (r *TenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 
 	return tenants, nil
 }
+
+func (r *TenantRepo) ListPaginated(ctx context.Context, limit, offset int) ([]*domain.Tenant, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, slug, settings, created_at, updated_at
+		 FROM tenants ORDER BY created_at, id
+		 LIMIT $1 OFFSET $2`,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tenantRepo.ListPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	var tenants []*domain.Tenant
+	for rows.Next() {
+		var t domain.Tenant
+
+		err = rows.Scan(&t.ID, &t.Name, &t.Slug, &t.Settings, &t.CreatedAt, &t.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("tenantRepo.ListPaginated: scan: %w", err)
+		}
+
+		tenants = append(tenants, &t)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("tenantRepo.ListPaginated: rows: %w", err)
+	}
+
+	return tenants, nil
+}

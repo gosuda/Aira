@@ -154,7 +154,9 @@ func TestListTenants(t *testing.T) {
 		}
 		store := &mockDataStore{
 			tenants: &mockTenantRepo{
-				listFunc: func(_ context.Context) ([]*domain.Tenant, error) {
+				listPaginatedFunc: func(_ context.Context, limit, offset int) ([]*domain.Tenant, error) {
+					assert.Equal(t, 50, limit, "default limit")
+					assert.Equal(t, 0, offset, "default offset")
 					return expected, nil
 				},
 			},

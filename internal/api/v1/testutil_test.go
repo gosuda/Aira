@@ -48,11 +48,12 @@ func (m *mockDataStore) AgentSessions() domain.AgentSessionRepository { return m
 // ---------------------------------------------------------------------------
 
 type mockTenantRepo struct {
-	createFunc    func(ctx context.Context, t *domain.Tenant) error
-	getByIDFunc   func(ctx context.Context, id uuid.UUID) (*domain.Tenant, error)
-	getBySlugFunc func(ctx context.Context, slug string) (*domain.Tenant, error)
-	updateFunc    func(ctx context.Context, t *domain.Tenant) error
-	listFunc      func(ctx context.Context) ([]*domain.Tenant, error)
+	createFunc        func(ctx context.Context, t *domain.Tenant) error
+	getByIDFunc       func(ctx context.Context, id uuid.UUID) (*domain.Tenant, error)
+	getBySlugFunc     func(ctx context.Context, slug string) (*domain.Tenant, error)
+	updateFunc        func(ctx context.Context, t *domain.Tenant) error
+	listFunc          func(ctx context.Context) ([]*domain.Tenant, error)
+	listPaginatedFunc func(ctx context.Context, limit, offset int) ([]*domain.Tenant, error)
 }
 
 func (m *mockTenantRepo) Create(ctx context.Context, t *domain.Tenant) error {
@@ -73,6 +74,10 @@ func (m *mockTenantRepo) Update(ctx context.Context, t *domain.Tenant) error {
 
 func (m *mockTenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 	return m.listFunc(ctx)
+}
+
+func (m *mockTenantRepo) ListPaginated(ctx context.Context, limit, offset int) ([]*domain.Tenant, error) {
+	return m.listPaginatedFunc(ctx, limit, offset)
 }
 
 // ---------------------------------------------------------------------------
