@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -76,7 +77,7 @@ func (s *Service) ValidateAPIKey(ctx context.Context, rawKey string) (*domain.Us
 		return nil, nil, fmt.Errorf("auth.ValidateAPIKey: %w", ErrInvalidAPIKey)
 	}
 
-	if apiKey.KeyHash != keyHash {
+	if subtle.ConstantTimeCompare([]byte(apiKey.KeyHash), []byte(keyHash)) != 1 {
 		return nil, nil, fmt.Errorf("auth.ValidateAPIKey: %w", ErrInvalidAPIKey)
 	}
 

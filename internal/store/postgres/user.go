@@ -227,7 +227,8 @@ func (r *UserRepo) GetMessengerLink(ctx context.Context, tenantID uuid.UUID, pla
 func (r *UserRepo) ListMessengerLinks(ctx context.Context, userID uuid.UUID) ([]*domain.UserMessengerLink, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, user_id, tenant_id, platform, external_id, created_at
-		 FROM user_messenger_links WHERE user_id = $1 ORDER BY created_at`,
+		 FROM user_messenger_links WHERE user_id = $1 ORDER BY created_at, id
+		 LIMIT 200`,
 		userID,
 	)
 	if err != nil {
@@ -292,11 +293,24 @@ func (r *UserRepo) GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, pr
 	var key domain.APIKey
 	var scopes []byte
 
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
-		 FROM api_keys WHERE tenant_id = $1 AND prefix = $2`,
-		tenantID, prefix,
-	).Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
+	// When tenantID is uuid.Nil, search across all tenants (used by API key
+	// authentication middleware where tenant context is not yet established).
+	var row pgx.Row
+	if tenantID == uuid.Nil {
+		row = r.pool.QueryRow(ctx,
+			`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
+			 FROM api_keys WHERE prefix = $1`,
+			prefix,
+		)
+	} else {
+		row = r.pool.QueryRow(ctx,
+			`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
+			 FROM api_keys WHERE tenant_id = $1 AND prefix = $2`,
+			tenantID, prefix,
+		)
+	}
+
+	err := row.Scan(&key.ID, &key.TenantID, &key.UserID, &key.Name, &key.KeyHash, &key.Prefix,
 		&scopes, &key.LastUsedAt, &key.ExpiresAt, &key.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("userRepo.GetAPIKeyByPrefix: %w", domain.ErrNotFound)
@@ -316,7 +330,8 @@ func (r *UserRepo) GetAPIKeyByPrefix(ctx context.Context, tenantID uuid.UUID, pr
 func (r *UserRepo) ListAPIKeys(ctx context.Context, tenantID, userID uuid.UUID) ([]*domain.APIKey, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, user_id, name, key_hash, prefix, scopes, last_used_at, expires_at, created_at
-		 FROM api_keys WHERE tenant_id = $1 AND user_id = $2 ORDER BY created_at`,
+		 FROM api_keys WHERE tenant_id = $1 AND user_id = $2 ORDER BY created_at, id
+		 LIMIT 200`,
 		tenantID, userID,
 	)
 	if err != nil {
