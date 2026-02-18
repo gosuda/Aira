@@ -122,6 +122,7 @@ type mockTaskRepo struct {
 	listByProjectFunc          func(ctx context.Context, tenantID, projectID uuid.UUID) ([]*domain.Task, error)
 	listByProjectPaginatedFunc func(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*domain.Task, error)
 	listByStatusFunc           func(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error)
+	listByStatusPaginatedFunc  func(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus, limit, offset int) ([]*domain.Task, error)
 	updateStatusFunc           func(ctx context.Context, tenantID, id uuid.UUID, status domain.TaskStatus) error
 	updateFunc                 func(ctx context.Context, t *domain.Task) error
 	deleteFunc                 func(ctx context.Context, tenantID, id uuid.UUID) error
@@ -145,6 +146,10 @@ func (m *mockTaskRepo) ListByProjectPaginated(ctx context.Context, tenantID, pro
 
 func (m *mockTaskRepo) ListByStatus(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error) {
 	return m.listByStatusFunc(ctx, tenantID, projectID, status)
+}
+
+func (m *mockTaskRepo) ListByStatusPaginated(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus, limit, offset int) ([]*domain.Task, error) {
+	return m.listByStatusPaginatedFunc(ctx, tenantID, projectID, status, limit, offset)
 }
 
 func (m *mockTaskRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.TaskStatus) error {

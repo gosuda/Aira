@@ -55,6 +55,7 @@ type TaskRepository interface {
 	ListByProject(ctx context.Context, tenantID, projectID uuid.UUID) ([]*Task, error)
 	ListByProjectPaginated(ctx context.Context, tenantID, projectID uuid.UUID, limit, offset int) ([]*Task, error)
 	ListByStatus(ctx context.Context, tenantID, projectID uuid.UUID, status TaskStatus) ([]*Task, error)
+	ListByStatusPaginated(ctx context.Context, tenantID, projectID uuid.UUID, status TaskStatus, limit, offset int) ([]*Task, error)
 	UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status TaskStatus) error
 	Update(ctx context.Context, t *Task) error
 	Delete(ctx context.Context, tenantID, id uuid.UUID) error

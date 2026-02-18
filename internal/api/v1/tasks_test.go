@@ -284,16 +284,18 @@ func TestListTasks(t *testing.T) {
 	t.Run("filtered_by_status", func(t *testing.T) {
 		t.Parallel()
 
-		var listByStatusCalled bool
+		var listByStatusPaginatedCalled bool
 		tasks := makeSampleTasks()
 		_, api := humatest.New(t)
 		store := &mockDataStore{
 			tasks: &mockTaskRepo{
-				listByStatusFunc: func(_ context.Context, tid, pid uuid.UUID, status domain.TaskStatus) ([]*domain.Task, error) {
-					listByStatusCalled = true
+				listByStatusPaginatedFunc: func(_ context.Context, tid, pid uuid.UUID, status domain.TaskStatus, limit, offset int) ([]*domain.Task, error) {
+					listByStatusPaginatedCalled = true
 					assert.Equal(t, tenantID, tid)
 					assert.Equal(t, projectID, pid)
 					assert.Equal(t, domain.TaskStatusBacklog, status)
+					assert.Equal(t, 50, limit, "default limit")
+					assert.Equal(t, 0, offset, "default offset")
 					return []*domain.Task{tasks[0]}, nil
 				},
 			},
@@ -304,7 +306,7 @@ func TestListTasks(t *testing.T) {
 		resp := api.GetCtx(ctx, "/tasks?project_id="+projectID.String()+"&status=backlog")
 
 		require.Equal(t, http.StatusOK, resp.Code)
-		assert.True(t, listByStatusCalled, "ListByStatus must be invoked when status filter is set")
+		assert.True(t, listByStatusPaginatedCalled, "ListByStatusPaginated must be invoked when status filter is set")
 
 		var body []*domain.Task
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))

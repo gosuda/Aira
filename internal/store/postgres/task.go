@@ -109,6 +109,23 @@ func (r *TaskRepo) ListByStatus(ctx context.Context, tenantID, projectID uuid.UU
 	return scanTasks(rows, "taskRepo.ListByStatus")
 }
 
+func (r *TaskRepo) ListByStatusPaginated(ctx context.Context, tenantID, projectID uuid.UUID, status domain.TaskStatus, limit, offset int) ([]*domain.Task, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, tenant_id, project_id, adr_id, title, description, status, priority,
+		        assigned_to, agent_session_id, created_at, updated_at
+		 FROM tasks WHERE tenant_id = $1 AND project_id = $2 AND status = $3
+		 ORDER BY priority, created_at, id
+		 LIMIT $4 OFFSET $5`,
+		tenantID, projectID, status, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("taskRepo.ListByStatusPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	return scanTasks(rows, "taskRepo.ListByStatusPaginated")
+}
+
 func (r *TaskRepo) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.TaskStatus) error {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE tasks SET status = $1, updated_at = now() WHERE tenant_id = $2 AND id = $3`,

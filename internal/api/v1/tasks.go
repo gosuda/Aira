@@ -140,7 +140,7 @@ func RegisterTaskRoutes(api huma.API, store DataStore) {
 
 		if input.Status != "" {
 			status := domain.TaskStatus(input.Status)
-			tasks, err := store.Tasks().ListByStatus(ctx, tenantID, input.ProjectID, status)
+			tasks, err := store.Tasks().ListByStatusPaginated(ctx, tenantID, input.ProjectID, status, input.Limit, input.Offset)
 			if err != nil {
 				return nil, huma.Error500InternalServerError("failed to list tasks", err)
 			}
