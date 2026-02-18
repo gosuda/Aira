@@ -23,6 +23,13 @@ import (
 	"github.com/gosuda/aira/web"
 )
 
+// Build-time metadata, set via ldflags.
+var (
+	version = "dev"
+	commit  = "unknown" //nolint:gochecknoglobals // ldflags injection target
+	date    = "unknown" //nolint:gochecknoglobals // ldflags injection target
+)
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("startup failed")
@@ -44,6 +51,12 @@ func run() error {
 	} else {
 		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 	}
+
+	log.Info().
+		Str("version", version).
+		Str("commit", commit).
+		Str("date", date).
+		Msg("aira starting")
 
 	ctx := context.Background()
 
@@ -139,6 +152,10 @@ func run() error {
 	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
 		return shutdownErr
 	}
+
+	log.Info().Msg("draining agent orchestrator...")
+	orchestrator.Shutdown()
+	log.Info().Msg("orchestrator drained")
 
 	log.Info().Msg("stopped")
 	return nil

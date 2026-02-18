@@ -32,8 +32,13 @@ COPY . .
 # Inject the frontend build output into web/build/ for go:embed.
 COPY --from=builder-web /src/web/build/ ./web/build/
 
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
 RUN CGO_ENABLED=0 GOOS=linux \
-    go build -trimpath -ldflags="-s -w" -o /aira ./cmd/aira
+    go build -trimpath \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+    -o /aira ./cmd/aira
 
 # ============================================================================
 # Stage 3: Minimal runtime image
