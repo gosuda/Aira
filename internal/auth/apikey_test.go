@@ -51,7 +51,9 @@ func (m *mockUserRepo) CreateOAuthLink(context.Context, *domain.UserOAuthLink) e
 func (m *mockUserRepo) GetOAuthLink(context.Context, string, string) (*domain.UserOAuthLink, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) DeleteOAuthLink(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (m *mockUserRepo) DeleteOAuthLink(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 
 func (m *mockUserRepo) CreateMessengerLink(context.Context, *domain.UserMessengerLink) error {
 	return nil

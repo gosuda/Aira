@@ -60,7 +60,7 @@ func (m *mockUserRepo) CreateOAuthLink(_ context.Context, _ *domain.UserOAuthLin
 func (m *mockUserRepo) GetOAuthLink(_ context.Context, _, _ string) (*domain.UserOAuthLink, error) {
 	panic("not implemented")
 }
-func (m *mockUserRepo) DeleteOAuthLink(_ context.Context, _, _ uuid.UUID) error {
+func (m *mockUserRepo) DeleteOAuthLink(_ context.Context, _, _, _ uuid.UUID) error {
 	panic("not implemented")
 }
 func (m *mockUserRepo) CreateMessengerLink(_ context.Context, _ *domain.UserMessengerLink) error {

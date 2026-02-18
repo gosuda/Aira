@@ -61,7 +61,9 @@ type UserRepository interface {
 	// OAuth links
 	CreateOAuthLink(ctx context.Context, link *UserOAuthLink) error
 	GetOAuthLink(ctx context.Context, provider, providerID string) (*UserOAuthLink, error)
-	DeleteOAuthLink(ctx context.Context, userID, id uuid.UUID) error
+	// DeleteOAuthLink removes an OAuth link. The tenantID parameter ensures
+	// the calling user belongs to the correct tenant (joined through users table).
+	DeleteOAuthLink(ctx context.Context, tenantID, userID, id uuid.UUID) error
 
 	// Messenger links
 	CreateMessengerLink(ctx context.Context, link *UserMessengerLink) error

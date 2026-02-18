@@ -173,10 +173,13 @@ func (r *UserRepo) GetOAuthLink(ctx context.Context, provider, providerID string
 	return &link, nil
 }
 
-func (r *UserRepo) DeleteOAuthLink(ctx context.Context, userID, id uuid.UUID) error {
+func (r *UserRepo) DeleteOAuthLink(ctx context.Context, tenantID, userID, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx,
-		`DELETE FROM user_oauth_links WHERE user_id = $1 AND id = $2`,
-		userID, id,
+		`DELETE FROM user_oauth_links
+		 WHERE id = $1 AND user_id IN (
+		     SELECT id FROM users WHERE tenant_id = $2 AND id = $3
+		 )`,
+		id, tenantID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("userRepo.DeleteOAuthLink: %w", err)
