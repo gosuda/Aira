@@ -125,7 +125,7 @@ func (r *AgentSessionRepo) ListByTask(ctx context.Context, tenantID, taskID uuid
 		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
 		        started_at, completed_at, error, metadata, created_at
 		 FROM agent_sessions WHERE tenant_id = $1 AND task_id = $2
-		 ORDER BY created_at DESC`,
+		 ORDER BY created_at DESC, id`,
 		tenantID, taskID,
 	)
 	if err != nil {
@@ -141,7 +141,7 @@ func (r *AgentSessionRepo) ListByProject(ctx context.Context, tenantID, projectI
 		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
 		        started_at, completed_at, error, metadata, created_at
 		 FROM agent_sessions WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY created_at DESC
+		 ORDER BY created_at DESC, id
 		 LIMIT 200`,
 		tenantID, projectID,
 	)
@@ -158,7 +158,7 @@ func (r *AgentSessionRepo) ListByProjectPaginated(ctx context.Context, tenantID,
 		`SELECT id, tenant_id, project_id, task_id, agent_type, status, container_id, branch_name,
 		        started_at, completed_at, error, metadata, created_at
 		 FROM agent_sessions WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY created_at DESC
+		 ORDER BY created_at DESC, id
 		 LIMIT $3 OFFSET $4`,
 		tenantID, projectID, limit, offset,
 	)

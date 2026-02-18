@@ -88,7 +88,7 @@ func (r *TenantRepo) Update(ctx context.Context, t *domain.Tenant) error {
 func (r *TenantRepo) List(ctx context.Context) ([]*domain.Tenant, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, name, slug, settings, created_at, updated_at
-		 FROM tenants ORDER BY created_at
+		 FROM tenants ORDER BY created_at, id
 		 LIMIT 500`,
 	)
 	if err != nil {

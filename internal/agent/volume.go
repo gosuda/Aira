@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -142,7 +143,10 @@ func (vm *VolumeManager) runGitContainer(ctx context.Context, volumeName string,
 	err = vm.client.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if err != nil {
 		// Clean up the created container since AutoRemove only applies to running containers.
-		if removeErr := vm.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}); removeErr != nil {
+		// Use a fresh context because the original ctx may already be canceled.
+		removeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if removeErr := vm.client.ContainerRemove(removeCtx, resp.ID, container.RemoveOptions{Force: true}); removeErr != nil {
 			log.Error().Err(removeErr).Str("container_id", resp.ID).Msg("agent.VolumeManager: failed to remove container after start failure")
 		}
 		return -1, fmt.Errorf("start git container: %w", err)

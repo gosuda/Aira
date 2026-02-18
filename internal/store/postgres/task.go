@@ -80,7 +80,7 @@ func (r *TaskRepo) ListByProjectPaginated(ctx context.Context, tenantID, project
 		`SELECT id, tenant_id, project_id, adr_id, title, description, status, priority,
 		        assigned_to, agent_session_id, created_at, updated_at
 		 FROM tasks WHERE tenant_id = $1 AND project_id = $2
-		 ORDER BY priority, created_at
+		 ORDER BY priority, created_at, id
 		 LIMIT $3 OFFSET $4`,
 		tenantID, projectID, limit, offset,
 	)

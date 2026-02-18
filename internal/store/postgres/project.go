@@ -99,7 +99,7 @@ func (r *ProjectRepo) List(ctx context.Context, tenantID uuid.UUID) ([]*domain.P
 func (r *ProjectRepo) ListPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*domain.Project, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, name, repo_url, branch, settings, created_at
-		 FROM projects WHERE tenant_id = $1 ORDER BY created_at
+		 FROM projects WHERE tenant_id = $1 ORDER BY created_at, id
 		 LIMIT $2 OFFSET $3`,
 		tenantID, limit, offset,
 	)

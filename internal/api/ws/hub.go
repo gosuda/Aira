@@ -76,6 +76,9 @@ func (h *Hub) ServeBoard(w http.ResponseWriter, r *http.Request) {
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
 				log.Debug().Err(writeErr).Msg("websocket write")
+				if closeErr := conn.Close(websocket.StatusInternalError, "write failed"); closeErr != nil {
+					log.Debug().Err(closeErr).Msg("websocket close after write failure")
+				}
 				return
 			}
 		}
@@ -139,6 +142,9 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 			}
 			if writeErr := conn.Write(ctx, websocket.MessageText, msg); writeErr != nil {
 				log.Debug().Err(writeErr).Msg("websocket write")
+				if closeErr := conn.Close(websocket.StatusInternalError, "write failed"); closeErr != nil {
+					log.Debug().Err(closeErr).Msg("websocket close after write failure")
+				}
 				return
 			}
 		}
