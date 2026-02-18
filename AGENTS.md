@@ -1,6 +1,83 @@
-# AGENTS.md — gosuda Organization
+# AGENTS.md — Aira (gosuda/aira)
 
-Official AI agent coding guidelines for Go 1.25+ projects under [github.com/gosuda](https://github.com/gosuda).
+AI-native kanban platform. Go 1.25+ backend, SvelteKit frontend, Docker-isolated agent execution.
+
+Module: `github.com/gosuda/aira` · Toolchain: `go1.26.0` · CGO: disabled (`CGO_ENABLED=0`)
+
+---
+
+## Project Architecture
+
+```
+cmd/aira/           → Entry point (zerolog init, config, server start)
+internal/
+  config/           → Env-based config (DatabaseConfig, RedisConfig, JWTConfig, etc.)
+  domain/           → Entities (User, Tenant, Project, Task, ADR, AgentSession, HITL)
+  auth/             → JWT + OAuth2 + API key + account linking
+  server/           → chi v5 router + Huma v2 API + middleware
+  server/middleware/ → Auth (JWT/API key), tenant extraction, rate limiting
+  api/v1/           → Huma REST endpoints (auth, boards, tasks, ADRs, agents, projects, tenants)
+  api/ws/           → WebSocket hub (board + agent streams via Redis pub/sub)
+  agent/            → AgentBackend interface, Registry, Orchestrator, Docker runtime
+  agent/backends/   → Claude, Codex, OpenCode, ACP transport implementations
+  messenger/        → Messenger interface + HITL router
+  messenger/slack/  → Slack Events API + Block Kit
+  messenger/discord/→ Discord bot integration
+  messenger/telegram/→ Telegram bot integration
+  store/postgres/   → PostgreSQL repos (pgx v5), all tenant-scoped
+  store/redis/      → Redis pub/sub (board/agent channels) + cache
+  notify/           → Push notification dispatcher
+  enterprise/       → RBAC, OAuth SSO, encrypted secrets
+  secrets/          → Secret encryption service
+web/                → SvelteKit 5 dashboard (kanban + ADR timeline + agent monitor)
+migrations/         → PostgreSQL migration files
+docs/adrs/          → 9 MADR architectural decision records (ADR-0001 through ADR-0009)
+```
+
+---
+
+## Key Interfaces
+
+```go
+// AgentBackend — universal AI agent integration (agent/backend.go)
+type AgentBackend interface {
+    StartSession(ctx context.Context, opts SessionOptions) (SessionID, error)
+    SendPrompt(ctx context.Context, sessionID SessionID, prompt string) error
+    Cancel(ctx context.Context, sessionID SessionID) error
+    OnMessage(handler MessageHandler)
+    Dispose(ctx context.Context) error
+}
+
+// TransportHandler — per-agent protocol adapter (agent/transport.go)
+type TransportHandler interface {
+    AgentName() string
+    InitTimeout() time.Duration
+    IdleTimeout() time.Duration
+    FilterOutput(line string) (string, bool)
+    ParseToolCall(raw json.RawMessage) (ToolCall, error)
+}
+
+// Messenger — platform-agnostic messenger operations (messenger/messenger.go)
+type Messenger interface {
+    SendMessage(ctx context.Context, channelID string, text string) (MessageID, error)
+    CreateThread(ctx context.Context, channelID, parentID, text string, options []QuestionOption) (ThreadID, error)
+    UpdateMessage(ctx context.Context, channelID, messageID, text string) error
+    SendNotification(ctx context.Context, userExternalID, text string) error
+    Platform() string
+}
+```
+
+---
+
+## Logging
+
+Uses `github.com/rs/zerolog` (not stdlib slog). Import `"github.com/rs/zerolog/log"`.
+
+```go
+log.Info().Str("addr", addr).Msg("starting server")
+log.Error().Err(err).Str("session_id", id).Msg("agent failed")
+log.Warn().Str("user_id", uid).Msg("no messenger links")
+```
 
 ---
 
@@ -37,7 +114,7 @@ Full configuration: **[`.golangci.yml`](.golangci.yml)**. Linter tiers:
 ## Error Handling
 
 1. **Wrap with `%w`** — always add call-site context: `return fmt.Errorf("repo.Find: %w", err)`
-2. **Sentinel errors** per package: `var ErrNotFound = errors.New("user: not found")`
+2. **Sentinel errors** per package with domain prefix: `var ErrNotFound = errors.New("domain: not found")`
 3. **Multi-error** — use `errors.Join(err1, err2)` or `fmt.Errorf("op: %w and %w", e1, e2)`
 4. **Never ignore errors** — `_ = fn()` only for `errcheck.exclude-functions`
 5. **Fail fast** — return immediately; no state accumulation after failure
@@ -84,7 +161,7 @@ for _, item := range items {
 if err := g.Wait(); err != nil { return fmt.Errorf("processAll: %w", err) }
 ```
 
-**Anti-patterns:** ❌ shared memory without sync · ❌ `sync.Mutex` in public APIs · ❌ goroutine without context · ❌ closing channel from receiver · ❌ sending on closed channel · ❌ `time.Sleep` for synchronization · ❌ unbounded goroutine spawn
+**Anti-patterns:** shared memory without sync · `sync.Mutex` in public APIs · goroutine without context · closing channel from receiver · sending on closed channel · `time.Sleep` for synchronization · unbounded goroutine spawn
 
 ---
 
@@ -102,13 +179,51 @@ go test -v -race -coverprofile=coverage.out ./...
 
 ---
 
+## Database
+
+PostgreSQL via `pgx/v5`. All queries **must** be tenant-scoped (tenant_id in WHERE clause). Repository pattern enforces this via interface methods that require `tenantID uuid.UUID`.
+
+Key tables: `tenants`, `users`, `projects`, `adrs`, `tasks`, `agent_sessions`, `hitl_questions`, `messenger_connections`, `repo_volumes`, `audit_log`
+
+Migrations in `migrations/` — applied via `make migrate-up`, rolled back via `make migrate-down` (dev/test only).
+
+---
+
+## Agent Execution
+
+- Each agent session runs in an isolated Docker container with persistent repo volume
+- Branch isolation: agent works on `aira/<session-id>` branch, merges/PRs on completion
+- 4 backends: Claude SDK, Codex, OpenCode, ACP (via `AgentRegistry`)
+- HITL routing: agent questions → messenger thread → human reply → agent resumes
+- ADR creation: agents call `create_adr` tool + post-processing extracts implicit decisions
+
+---
+
+## Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/go-chi/chi/v5` | HTTP router |
+| `github.com/danielgtaylor/huma/v2` | OpenAPI 3.1 generation |
+| `github.com/coder/websocket` | WebSocket (net/http native) |
+| `github.com/jackc/pgx/v5` | PostgreSQL driver |
+| `github.com/redis/go-redis/v9` | Redis client |
+| `github.com/golang-jwt/jwt/v5` | JWT auth |
+| `github.com/rs/zerolog` | Structured logging |
+| `github.com/rs/cors` | CORS middleware |
+| `github.com/docker/docker` | Docker Engine API |
+| `github.com/slack-go/slack` | Slack API client |
+| `golang.org/x/crypto` | argon2id password hashing |
+
+---
+
 ## Security
 
 - **Vulnerability scanning:** `govulncheck ./...` — CI and pre-release
 - **Module integrity:** `go mod verify` — validates checksums against go.sum
 - **Supply chain:** always commit `go.sum` · audit with `go mod graph` · pin toolchain
-- **SBOM:** `syft packages . -o cyclonedx-json > sbom.json` on release
 - **Crypto:** FIPS 140-3, post-quantum X25519MLKEM768, `crypto/rand.Text()` for secure tokens
+- **G117 nolint:** DTO/config fields holding secrets use `//nolint:gosec` directives
 
 ---
 
@@ -116,21 +231,18 @@ go test -v -race -coverprofile=coverage.out ./...
 
 - **Object reuse:** `sync.Pool` hot paths · `weak.Make` for cache-friendly patterns
 - **Benchmarking:** `go test -bench=. -benchmem` · `-cpuprofile`/`-memprofile`
-- **Avoid `reflect`:** ~30x slower than static code, defeats compile-time checks and linters · prefer generics (4–18x faster), type switches, interfaces, or `go generate` codegen for hot paths
-- **Escape analysis:** `go build -gcflags='-m'` to verify heap allocations
-
-* **PGO:** production CPU profile → `default.pgo` in main package → rebuild (2–14% gain)
-* **GOGC:** default 100; high-throughput `200-400`; memory-constrained `GOMEMLIMIT` + `GOGC=off`
+- **Avoid `reflect`:** prefer generics, type switches, interfaces, or `go generate`
+- **PGO:** production CPU profile → `default.pgo` in main package → rebuild (2-14% gain)
+- **GOGC:** default 100; high-throughput `200-400`; memory-constrained `GOMEMLIMIT` + `GOGC=off`
 
 ---
 
 ## Module Hygiene
 
 - **Always commit** `go.mod` and `go.sum` · **never commit** `go.work`
-- **Pin toolchain:** `toolchain go1.25.0` in go.mod
+- **Pin toolchain:** `toolchain go1.26.0` in go.mod
 - **Tool directive (Go 1.24+):** `tool golang.org/x/tools/cmd/stringer` in go.mod
 - **Pre-release:** `go mod tidy && go mod verify && govulncheck ./...`
-- **Sandboxed I/O (Go 1.24+):** `os.Root` for directory-scoped file operations
 
 ---
 
@@ -139,8 +251,10 @@ go test -v -race -coverprofile=coverage.out ./...
 | File | Purpose |
 |------|---------|
 | [`.golangci.yml`](.golangci.yml) | golangci-lint v2 configuration |
-| [`Makefile`](Makefile) | Build/lint/test/vuln targets |
+| [`Makefile`](Makefile) | Build/lint/test/vuln/migrate targets |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | GitHub Actions: test → lint → security → build |
+| [`Dockerfile`](Dockerfile) | Multi-stage build (Go + SvelteKit → scratch) |
+| [`docker-compose.yml`](docker-compose.yml) | Dev: PostgreSQL + Redis + Aira |
 
 **Pre-commit:** `make all` or `gofmt -w . && goimports -w . && go vet ./... && golangci-lint run && go test -race ./... && govulncheck ./...`
 
@@ -148,9 +262,9 @@ go test -v -race -coverprofile=coverage.out ./...
 
 ## Verbalized Sampling
 
-Before trival or non-trivial changes, AI agents **must**:
+Before trivial or non-trivial changes, AI agents **must**:
 
-1. **Sample 3–5 intent hypotheses** — rank by likelihood, note one weakness each
+1. **Sample 3-5 intent hypotheses** — rank by likelihood, note one weakness each
 2. **Explore edge cases** — up to 3 standard, 5 for architectural changes
 3. **Assess coupling** — structural (imports), temporal (co-changing files), semantic (shared concepts)
 4. **Tidy first** — high coupling → extract/split/rename before changing; low → change directly
